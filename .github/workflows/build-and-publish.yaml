@@ -5,12 +5,10 @@ on:
     inputs:
       skip-target:
         description: 'Targets that should not build against, as array of strings. By default all tier 1 and 2 rust targets will be built.'
-        required: true
         type: string
         default: "[]"
       target-regex:
         description: 'Only build targets matching such regex.'
-        required: true
         type: string
         default: "^([^-]+)-([^-]+)-([^-]+)(?:-([^-]+))?$"
       binary-name:
@@ -19,7 +17,6 @@ on:
         type: string
       test-reproducibility:
         description: 'Whether to check if binaries is reproducible and log it in release notes'
-        required: true
         type: boolean
         default: true
 
