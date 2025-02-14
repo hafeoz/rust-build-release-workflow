@@ -19,6 +19,10 @@ on:
         description: 'Whether to check if binaries is reproducible and log it in release notes'
         type: boolean
         default: true
+      cargo-verbose:
+        description: 'Whether or not extra detailed messages are displayed by Cargo'
+        type: boolean
+        default: false
 
 jobs:
   calculate-matrix:
@@ -178,12 +182,14 @@ jobs:
         env:
           TARGET: "${{ matrix.target }}"
           BINARY: "${{ inputs.binary-name }}"
+          CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
         run: cross build --release "--target=$TARGET"
       - name: "Build for target ${{ matrix.target }} and check for reproducibility"
         if:   "${{ inputs.test-reproducibility }}"
         env:
           TARGET: "${{ matrix.target }}"
           BINARY: "${{ inputs.binary-name }}"
+          CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
         run: |
               cross-util run "--target=$TARGET" -- \
                 "sudo apt-get install --yes reprotest"
