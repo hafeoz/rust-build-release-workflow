@@ -215,6 +215,9 @@ jobs:
                 echo "RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1"
                 # Stub setarch as it doesn't work in docker
                 echo "COPY --chmod=555 setarch /usr/bin/setarch"
+                # Add user and groups to passwd database
+                echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
+                echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
               } >> "$dockerfile"
               CROSS_BUILD_DOCKERFILE="$dockerfile" \
                 cross-util run "--target=$TARGET" -- \
