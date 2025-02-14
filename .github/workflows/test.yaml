@@ -5,7 +5,7 @@ on:
 
 jobs:
   call-publish:
-    uses: ./build-and-publish.yaml
+    uses: ./.github/workflows/build-and-publish.yaml
     permissions:
       contents: write      # attest-build-provenance (read), action-gh-release (write)
       id-token: write      # attest-build-provenance
