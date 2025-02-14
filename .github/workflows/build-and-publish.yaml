@@ -205,16 +205,10 @@ jobs:
               shift
             done
             exec "$@"
-          REPROTEST_CMD: 'CARGO_TARGET_DIR=./target cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\"'
-          EXTRACT_ARTIFACT_CMD: |
-            if [ -e ./target ]; then
-              echo "Copying artifacts to $CARGO_TARGET_DIR"
-              if [ -d "$CARGO_TARGET_DIR" ]; then
-                rm -rvf "$CARGO_TARGET_DIR"
-              fi
-              mkdir "$CARGO_TARGET_DIR"
-              cp -rvf ./target/* "${CARGO_TARGET_DIR}/"
-            fi
+          REPROTEST_CMD: >
+            CARGO_TARGET_DIR=./target cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\" &&
+            rm -rf \"$CARGO_TARGET_DIR/*\" &&
+            cp -vaf ./target/. \"$CARGO_TARGET_DIR/\"
           RELEASE_PATH_GLOB: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}*"
           CROSS_RUSTFLAGS: "${{ inputs.rust-flags }}"
         run: |
@@ -233,7 +227,7 @@ jobs:
               } >> "$dockerfile"
               env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${CROSS_RUSTFLAGS}" CROSS_BUILD_DOCKERFILE="$dockerfile" \
                 cross-util run "--target=$TARGET" -- \
-                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE; $EXTRACT_ARTIFACT_CMD"
+                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
