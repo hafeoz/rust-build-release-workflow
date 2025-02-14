@@ -201,12 +201,6 @@ jobs:
             done
             exec "$@"
           REPROTEST_CMD: 'CARGO_TARGET_DIR=./target cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\"'
-          EXTRACT_ARTIFACT_CMD: |
-            if [ -e ./target ]; then
-              echo "Copying artifacts to $CARGO_TARGET_DIR"
-              mkdir "$CARGO_TARGET_DIR"
-              cp -rvf ./target/* "${CARGO_TARGET_DIR}/"
-            fi
           RELEASE_PATH_GLOB: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}*"
         run: |
               dockerfile="$(mktemp)"
@@ -224,7 +218,7 @@ jobs:
               } >> "$dockerfile"
               CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged --security-opt=no-new-privileges:false --security-opt seccomp=unconfined --security-opt apparmor=unconfined" \
                 cross-util run "--target=$TARGET" -- \
-                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE; $EXTRACT_ARTIFACT_CMD"
+                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
