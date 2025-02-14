@@ -124,7 +124,7 @@ jobs:
     name: "Generate changelog from Semantic Commits"
     runs-on: ubuntu-latest
     outputs:
-      changelog: steps.cog.outputs.changelog
+      changelog: "${{ steps.cog.outputs.changelog }}"
     steps:
       - uses: actions/checkout@v4
         with:
