@@ -115,8 +115,9 @@ jobs:
                 target="$(echo "$target" | xargs)"
                 # Do not run on empty lines
                 if [ "$target" == "" ]; then continue; fi
-                if [[ "$target" =~ $REGEX ]]; then filtered="${filtered};${target}"; fi
+                if [[ "$target" =~ $REGEX ]]; then filtered="${filtered}${target};"; fi
               done <<< "$TARGETS"
+              filtered="${filtered%\;}"
               echo "Following targets will be built: ${filtered}"
               echo -n "filtered_targets=" >> "$GITHUB_OUTPUT"
               echo -n "$filtered" | jq --raw-input --slurp --compact-output 'split(";")' >> "$GITHUB_OUTPUT"
