@@ -198,23 +198,29 @@ jobs:
                 echo "reproducible=❌  $BINARY is not reproducible for $TARGET" >> "$GITHUB_OUTPUT"
               fi
       - name: "Rename build artifact"
+        id: move-artifact
         env:
           TARGET: "${{ matrix.target }}"
           BINARY: "${{ inputs.binary-name }}"
         run:  |
-          output_path="target/${TARGET}/release/${BINARY}"
-          if [ ! -f "$output_path" ]; then
-            echo "Failed to find binary! Possible finds:"
-            find / -name "*${BINARY}*"
+          release_path_unix="target/${TARGET}/release/${BINARY}"
+          release_path_win="${release_path_unix}.exe"
+          target_path_unix="target/${BINARY}-${TARGET}"
+          target_path_win="${target_path_unix}.exe"
+          if [ -f "$release_path_unix" ]; then
+            mv "$release_path_unix" "$target_path_unix"
+            echo "TARGET_PATH=$target_path_unix" >> "$GITHUB_OUTPUT"
+          elif [ -f "$release_path_win" ]; then
+            mv "$release_path_win" "$target_path_win"
+            echo "TARGET_PATH=$target_path_win" >> "$GITHUB_OUTPUT"
           fi
-          mv "$output_path" "target/${BINARY}-${TARGET}"
       - name: "Generate build provenance attestation"
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: "target/${{ inputs.binary-name }}-${{ matrix.target }}"
+          subject-path: "${{ steps.move-artifact.outputs.TARGET_PATH }}"
       - name: "Upload binary as artifact"
         uses: softprops/action-gh-release@master
         with:
-          files: "target/${{ inputs.binary-name }}-${{ matrix.target }}"
+          files: "${{ steps.move-artifact.outputs.TARGET_PATH }}"
           body: "${{ steps.reproducible-report.outputs.reproducible }}"
           append_body: true
