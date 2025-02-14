@@ -211,16 +211,23 @@ jobs:
         run:  |
           release_path_unix="target/${TARGET}/release/${BINARY}"
           release_path_win="${release_path_unix}.exe"
+          release_path_js="${release_path_unix}.js"
           target_path_unix="target/${BINARY}-${TARGET}"
           target_path_win="${target_path_unix}.exe"
+          target_path_js="${target_path_unix}.js"
           if [ -f "$release_path_unix" ]; then
             mv "$release_path_unix" "$target_path_unix"
             echo "TARGET_PATH=$target_path_unix" >> "$GITHUB_OUTPUT"
           elif [ -f "$release_path_win" ]; then
             mv "$release_path_win" "$target_path_win"
             echo "TARGET_PATH=$target_path_win" >> "$GITHUB_OUTPUT"
+          elif [ -f "$release_path_js" ]; then
+            mv "$release_path_js" "$target_path_js"
+            echo "TARGET_PATH=$target_path_js" >> "$GITHUB_OUTPUT"
           else
-            echo "Build artifact not found"
+            echo "::error ::Build artifact not found"
+            echo "Possible files in target/ directory:"
+            find target -type f 2>/dev/null
             exit 1
           fi
       - name: "Generate build provenance attestation"
