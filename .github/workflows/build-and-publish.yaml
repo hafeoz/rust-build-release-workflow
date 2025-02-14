@@ -190,23 +190,33 @@ jobs:
           CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
           REPROTEST_VERBOSE: "${{ inputs.reprotest-verbose }}"
           FAIL_IF_UNREPRODUCIBLE: "${{ inputs.fail-if-unreproducible }}"
+          SETARCH_STUB: |
+            #!/bin/sh
+            # Remove arch
+            shift
+            while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do
+              # Remove options
+              shift
+            done
+            exec "$@"
+          CARGO_FULL_CLEANUP: "rm -rf /target/* ./target"
+          CARGO_POST_CLEANUP: "find /target -name '*.d' -delete"
+          RELEASE_PATH_GLOB: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}*"
         run: |
               dockerfile="$(mktemp)"
+              echo "$SETARCH_STUB" > setarch
               {
                 echo "ARG CROSS_BASE_IMAGE"
                 echo "FROM \$CROSS_BASE_IMAGE"
                 echo "RUN apt-get update >/dev/null 2>&1"
                 echo "RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1"
                 # Stub setarch as it doesn't work in docker
-                echo "RUN echo '#!/bin/sh' > /usr/bin/setarch"
-                echo "RUN echo 'shift; while [ \"\${1##-*}\" = \"\" ] && [ \"\$1\" != \"\" ]; do shift; done' >> /usr/bin/setarch"
-                echo "RUN echo 'exec \"\$@\"' >> /usr/bin/setarch"
-                echo "RUN chmod +x /usr/bin/setarch"
+                echo "COPY --chmod=555 setarch /usr/bin/setarch"
               } >> "$dockerfile"
-              CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- \
-                "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \
-                \"rm -rf /target/* && cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\" && find /target -name "*.d" -delete\" \
-                \"/target/${TARGET}/release/${BINARY}*\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
+              reprotest_cmd="${CARGO_FULL_CLEANUP} && cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\" && ${CARGO_POST_CLEANUP}"
+              CROSS_BUILD_DOCKERFILE="$dockerfile" \
+                cross-util run "--target=$TARGET" -- \
+                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"$reprotest_cmd && mv -r /target ./target\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
