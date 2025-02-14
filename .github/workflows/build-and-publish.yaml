@@ -187,7 +187,7 @@ jobs:
                 echo "FROM \$CROSS_BASE_IMAGE"
                 echo "RUN apt-get -qq update && apt-get install -qq --yes reprotest sudo"
                 echo "RUN useradd --create-home --user-group guest"
-                echo "RUN echo ALL ALL=(ALL:ALL) NOPASSWD: ALL | sudo tee /etc/sudoers.d/reprotest"
+                echo "RUN echo 'ALL ALL=(ALL:ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/reprotest"
               } >> "$dockerfile"
               CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- \
                 "reprotest --variations=user_group.available+=guest:guest,domain_host.use_sudo=1 \
