@@ -190,7 +190,7 @@ jobs:
           CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
           REPROTEST_VERBOSE: "${{ inputs.reprotest-verbose }}"
           FAIL_IF_UNREPRODUCIBLE: "${{ inputs.fail-if-unreproducible }}"
-          REPROTEST_VARIATIONS: "-all,+environment,+build_path,+num_cpus"
+          REPROTEST_VARIATIONS: "-all,+environment,+build_path,+num_cpus,+kernel,+aslr,+time,+fileordering"
           SETARCH_STUB: |
             #!/bin/sh
             # Remove arch
