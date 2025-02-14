@@ -16,15 +16,19 @@ on:
         required: true
         type: string
       test-reproducibility:
-        description: 'Whether to check if binaries is reproducible and log it in release notes'
+        description: 'Whether to check if binary is reproducible.'
         type: boolean
         default: true
+      fail-if-unreproducible:
+        description: 'Whether to fail workflow if binary is unreproducible. Unreproducible binaries are logged but not failed by default.'
+        type: boolean
+        default: false
       cargo-verbose:
-        description: 'Whether or not extra detailed messages are displayed by Cargo'
+        description: 'Whether or not display extra detailed messages for Cargo.'
         type: boolean
         default: false
       reprotest-verbose:
-        description: 'Level of verbosity for reprotest'
+        description: 'Level of verbosity for reprotest. 0~2 supported.'
         type: number
         default: 1
 
@@ -185,6 +189,7 @@ jobs:
           BINARY: "${{ inputs.binary-name }}"
           CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
           REPROTEST_VERBOSE: "${{ inputs.reprotest-verbose }}"
+          FAIL_IF_UNREPRODUCIBLE: "${{ inputs.fail-if-unreproducible }}"
         run: |
               dockerfile="$(mktemp)"
               {
@@ -206,6 +211,10 @@ jobs:
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=false" >> "$GITHUB_ENV"
+                if [ "$FAIL_IF_UNREPRODUCIBLE" == "true" ]; then
+                  echo "::error ::Binary is not reproducible"
+                  exit 1
+                fi
               else
                 echo "::error ::Failed to run reprotest"
                 exit 1
