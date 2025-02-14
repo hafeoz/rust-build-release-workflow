@@ -220,7 +220,9 @@ jobs:
                 cross-util run "--target=$TARGET" -- \
                   "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARIATIONS\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -e ./target ]; then
-                cp -rvf ./target/* /target/
+                echo "Copying artifacts to $CARGO_TARGET_DIR"
+                mkdir "$CARGO_TARGET_DIR"
+                cp -rvf ./target/* "${CARGO_TARGET_DIR}/"
               fi
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
