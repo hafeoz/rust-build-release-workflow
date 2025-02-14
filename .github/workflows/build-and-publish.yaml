@@ -209,14 +209,20 @@ jobs:
         env:
           TARGET: "${{ matrix.target }}"
           BINARY: "${{ inputs.binary-name }}"
-        run:  mv "target/${TARGET}/release/${BINARY}" "target/${TARGET}/release/${BINARY}-${TARGET}"
+        run:  |
+          output_path="target/${TARGET}/release/${BINARY}"
+          output_native_path="target/release/${BINARY}"
+          if [ ! -f "$output_path" ] && [ -f "$output_native_path" ]; then
+            output_path="$output_native_path"
+          fi
+          mv "$output_path" "target/${BINARY}-${TARGET}"
       - name: "Generate build provenance attestation"
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}-${{ matrix.target }}"
+          subject-path: "target/${{ inputs.binary-name }}-${{ matrix.target }}"
       - name: "Upload binary as artifact"
         uses: softprops/action-gh-release@master
         with:
-          files: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}-${{ matrix.target }}"
+          files: "target/${{ inputs.binary-name }}-${{ matrix.target }}"
           body: "${{ steps.reproducible-report.outputs.reproducible }}"
           append_body: true
