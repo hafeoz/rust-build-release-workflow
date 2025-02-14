@@ -213,14 +213,13 @@ jobs:
                 echo "FROM \$CROSS_BASE_IMAGE"
                 echo "RUN apt-get update >/dev/null 2>&1"
                 echo "RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1"
-                echo "RUN modprobe fuse"
                 # Stub setarch as it doesn't work in docker
                 echo "COPY --chmod=555 setarch /usr/bin/setarch"
                 # Add user and groups to passwd database
                 echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
                 echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
               } >> "$dockerfile"
-              CROSS_BUILD_DOCKERFILE="$dockerfile" \
+              CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged" \
                 cross-util run "--target=$TARGET" -- \
                   "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
