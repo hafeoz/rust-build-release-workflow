@@ -198,7 +198,7 @@ jobs:
               CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- \
                 "reprotest \"--verbosity=$REPROTEST_VERBOSE\" --vary=user_group.available+=guest:guest,domain_host.use_sudo=1,-kernel \
                 \"cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\"\" \
-                \"target/${TARGET}/release/${BINARY}\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
+                \"target/${TARGET}/release/${BINARY}*\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
