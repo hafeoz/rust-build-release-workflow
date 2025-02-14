@@ -225,7 +225,7 @@ jobs:
                 echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
                 echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
               } >> "$dockerfile"
-              env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${CROSS_RUSTFLAGS}" CROSS_BUILD_DOCKERFILE="$dockerfile" \
+              env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${CROSS_RUSTFLAGS}" CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged" \
                 cross-util run "--target=$TARGET" -- \
                   "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
