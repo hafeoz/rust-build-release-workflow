@@ -218,7 +218,7 @@ jobs:
               } >> "$dockerfile"
               CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged --security-opt=no-new-privileges:false --security-opt seccomp=unconfined --security-opt apparmor=unconfined" \
                 cross-util run "--target=$TARGET" -- \
-                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--veriations=$REPROTEST_VARIATIONS\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
+                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARIATIONS\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -e ./target ]; then
                 cp -rvf ./target/* /target/
               fi
