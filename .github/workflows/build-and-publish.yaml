@@ -31,6 +31,10 @@ on:
         description: 'Level of verbosity for reprotest. 0~2 supported.'
         type: number
         default: 1
+      rust-flags:
+        description: 'RUSTFLAGS environment variable used for compilation'
+        type: string
+        default: ''
 
 jobs:
   calculate-matrix:
@@ -181,7 +185,8 @@ jobs:
           TARGET: "${{ matrix.target }}"
           BINARY: "${{ inputs.binary-name }}"
           CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
-        run: cross build --release "--target=$TARGET"
+          CROSS_RUSTFLAGS: "${{ inputs.rust-flags }}"
+        run: env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${CROSS_RUSTFLAGS}" cross build --release "--target=$TARGET"
       - name: "Build for target ${{ matrix.target }} and check for reproducibility"
         if:   "${{ inputs.test-reproducibility }}"
         env:
@@ -201,7 +206,17 @@ jobs:
             done
             exec "$@"
           REPROTEST_CMD: 'CARGO_TARGET_DIR=./target cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\"'
+          EXTRACT_ARTIFACT_CMD: |
+            if [ -e ./target ]; then
+              echo "Copying artifacts to $CARGO_TARGET_DIR"
+              if [ -d "$CARGO_TARGET_DIR" ]; then
+                rm -rvf "$CARGO_TARGET_DIR"
+              fi
+              mkdir "$CARGO_TARGET_DIR"
+              cp -rvf ./target/* "${CARGO_TARGET_DIR}/"
+            fi
           RELEASE_PATH_GLOB: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}*"
+          CROSS_RUSTFLAGS: "${{ inputs.rust-flags }}"
         run: |
               dockerfile="$(mktemp)"
               echo "$SETARCH_STUB" > setarch
@@ -216,9 +231,9 @@ jobs:
                 echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
                 echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
               } >> "$dockerfile"
-              CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged --security-opt=no-new-privileges:false --security-opt seccomp=unconfined --security-opt apparmor=unconfined" \
+              env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${CROSS_RUSTFLAGS}" CROSS_BUILD_DOCKERFILE="$dockerfile" \
                 cross-util run "--target=$TARGET" -- \
-                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
+                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE; $EXTRACT_ARTIFACT_CMD"
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
