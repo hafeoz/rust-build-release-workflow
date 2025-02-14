@@ -111,6 +111,8 @@ jobs:
       - name: "Install rust toolchain"
         uses: dtolnay/rust-toolchain@stable
       - name: "Install cocogitto"
+        env:
+          RUSTFLAGS: "-C opt-level=0 -C lto=false -C panic=abort"
         run:  cargo install cocogitto
       - name: "Generate release notes"
         id:   cog
@@ -156,6 +158,8 @@ jobs:
       - name: "Install rust toolchain"
         uses: dtolnay/rust-toolchain@stable
       - name: "Install cross-compilation tool"
+        env:
+          RUSTFLAGS: "-C opt-level=0 -C lto=false -C panic=abort"
         run:  cargo install cross --git "https://github.com/cross-rs/cross"
       - name: "Build for target ${{ matrix.target }}"
         if:   "${{ !inputs.test-reproducibility }}"
