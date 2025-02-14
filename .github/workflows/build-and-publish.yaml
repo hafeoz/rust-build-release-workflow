@@ -213,6 +213,7 @@ jobs:
                 echo "FROM \$CROSS_BASE_IMAGE"
                 echo "RUN apt-get update >/dev/null 2>&1"
                 echo "RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1"
+                echo "RUN modprobe fuse"
                 # Stub setarch as it doesn't work in docker
                 echo "COPY --chmod=555 setarch /usr/bin/setarch"
                 # Add user and groups to passwd database
