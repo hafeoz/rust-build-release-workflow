@@ -213,6 +213,9 @@ jobs:
           elif [ -f "$release_path_win" ]; then
             mv "$release_path_win" "$target_path_win"
             echo "TARGET_PATH=$target_path_win" >> "$GITHUB_OUTPUT"
+          else
+            echo "Build artifact not found"
+            exit 1
           fi
       - name: "Generate build provenance attestation"
         uses: actions/attest-build-provenance@v2
