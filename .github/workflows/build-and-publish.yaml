@@ -87,7 +87,7 @@ jobs:
               filtered=""
               while read -r target; do
                 # Trim comments
-                target="${target%\#*}"
+                target="${target%%\#*}"
                 # Trim whitespaces
                 target="$(echo "$target" | xargs)"
                 # Do not run on empty lines
