@@ -200,8 +200,8 @@ jobs:
               } >> "$dockerfile"
               CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- \
                 "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \
-                \"cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\"\" \
-                \"target/${TARGET}/release/${BINARY}*\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
+                \"rm -rf /target && cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\" && find /target -name "*.d" -delete\" \
+                \"/target/${TARGET}/release/${BINARY}*\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
