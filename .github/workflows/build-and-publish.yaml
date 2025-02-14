@@ -195,7 +195,7 @@ jobs:
           CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
           REPROTEST_VERBOSE: "${{ inputs.reprotest-verbose }}"
           FAIL_IF_UNREPRODUCIBLE: "${{ inputs.fail-if-unreproducible }}"
-          REPROTEST_VARY: "-time,-domain_host" # time causes rustc to SIGSEGV (WHY?); domain_host needs unshare
+          REPROTEST_VARY: "+all,-time,-domain_host" # time causes rustc to SIGSEGV (WHY?); domain_host needs unshare
           SETARCH_STUB: |
             #!/bin/sh
             # Remove arch
