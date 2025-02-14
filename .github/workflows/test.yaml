@@ -1,0 +1,15 @@
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  call-publish:
+    uses: ./build-and-publish.yaml
+    permissions:
+      contents: write      # attest-build-provenance (read), action-gh-release (write)
+      id-token: write      # attest-build-provenance
+      attestations: write  # attest-build-provenance
+    with:
+      binary-name: workflow-test
+      test-reproducibility: false
