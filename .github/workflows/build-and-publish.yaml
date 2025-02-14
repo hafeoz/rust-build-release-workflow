@@ -184,7 +184,7 @@ jobs:
               dockerfile="$(mktemp)"
               {
                 echo "ARG CROSS_BASE_IMAGE"
-                echo "\$CROSS_BASE_IMAGE"
+                echo "FROM \$CROSS_BASE_IMAGE"
                 echo "RUN apt-get update && apt-get install --yes reprotest"
               } >> "$dockerfile"
               CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- \
