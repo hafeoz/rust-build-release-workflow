@@ -23,6 +23,10 @@ on:
         description: 'Whether or not extra detailed messages are displayed by Cargo'
         type: boolean
         default: false
+      reprotest-verbose:
+        description: 'Level of verbosity for reprotest'
+        type: number
+        default: 1
 
 jobs:
   calculate-matrix:
@@ -180,6 +184,7 @@ jobs:
           TARGET: "${{ matrix.target }}"
           BINARY: "${{ inputs.binary-name }}"
           CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
+          REPROTEST_VERBOSE: "${{ inputs.reprotest-verbose }}"
         run: |
               dockerfile="$(mktemp)"
               {
@@ -191,7 +196,7 @@ jobs:
                 echo "RUN echo 'ALL ALL=(ALL:ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/reprotest"
               } >> "$dockerfile"
               CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- \
-                "reprotest --vary=user_group.available+=guest:guest,domain_host.use_sudo=1,-kernel \
+                "reprotest \"--verbosity=$REPROTEST_VERBOSE\" --vary=user_group.available+=guest:guest,domain_host.use_sudo=1,-kernel \
                 \"cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\"\" \
                 \"target/${TARGET}/release/${BINARY}\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
