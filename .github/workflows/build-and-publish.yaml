@@ -184,6 +184,7 @@ jobs:
         env:
           TARGET: "${{ matrix.target }}"
           BINARY: "${{ inputs.binary-name }}"
+        run: cross build --release "--target=$TARGET"
       - name: "Build for target ${{ matrix.target }} and check for reproducibility"
         env:
           TARGET: "${{ matrix.target }}"
