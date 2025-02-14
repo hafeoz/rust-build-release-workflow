@@ -181,16 +181,22 @@ jobs:
           BINARY: "${{ inputs.binary-name }}"
           CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
         run: |
-              cross-util run "--target=$TARGET" -- \
-                "apt-get install --yes reprotest"
-              if \
-                cross-util run "--target=$TARGET" -- \
+              dockerfile="$(mktemp)"
+              {
+                echo "ARG CROSS_BASE_IMAGE"
+                echo "\$CROSS_BASE_IMAGE"
+                echo "RUN apt-get update && apt-get install --yes reprotest"
+              } >> "$dockerfile"
+              CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- \
                 "reprotest \"cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\"\" \
-                \"target/${TARGET}/release/${BINARY}\""\
-              ; then
+                \"target/${TARGET}/release/${BINARY}\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
+              if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
-              else
+              elif [ -f NONREPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=false" >> "$GITHUB_ENV"
+              else
+                echo "::error ::Failed to run reprotest"
+                exit 1
               fi
       - name: "Generate reproducibility report"
         id:   reproducible-report
