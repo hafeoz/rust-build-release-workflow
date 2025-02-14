@@ -220,7 +220,7 @@ jobs:
                 echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
                 echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
               } >> "$dockerfile"
-              CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged --security-opt=no-new-privileges:false" \
+              CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged --security-opt=no-new-privileges:false --security-opt seccomp=unconfined --security-opt apparmor=unconfined" \
                 cross-util run "--target=$TARGET" -- \
                   "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
