@@ -206,7 +206,7 @@ jobs:
             cp -rvf /target ./target
           RELEASE_PATH_GLOB: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}*"
         run: |
-              echo 1 > /proc/sys/kernel/unprivileged_userns_clone
+              sysctl -w kernel.unprivileged_userns_clone=1
               dockerfile="$(mktemp)"
               echo "$SETARCH_STUB" > setarch
               {
