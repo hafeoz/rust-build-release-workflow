@@ -64,12 +64,14 @@ jobs:
         i686-linux-android                  # 32-bit x86 Android (Pentium 4 plus various extensions)
         i686-unknown-freebsd                # 32-bit x86 FreeBSD (Pentium 4)
         sparc64-unknown-linux-gnu           # SPARC Linux (kernel 4.4, glibc 2.23)
-        sparcv9-sun-solaris                 # SPARC V9 Solaris 11.4
+        # https://github.com/cross-rs/cross/issues/1599
+        #sparcv9-sun-solaris                 # SPARC V9 Solaris 11.4
         thumbv7neon-linux-androideabi       # Thumb2-mode Armv7-A Android with NEON
         thumbv7neon-unknown-linux-gnueabihf # Thumb2-mode Armv7-A Linux with NEON (kernel 4.4, glibc 2.23)
         wasm32-unknown-emscripten           # WebAssembly via Emscripten
         x86_64-linux-android                # 64-bit x86 Android
-        x86_64-pc-solaris                   # 64-bit x86 Solaris 11.4
+        # https://github.com/cross-rs/cross/issues/1599
+        #x86_64-pc-solaris                   # 64-bit x86 Solaris 11.4
     outputs:
       targets: ${{ steps.calculate.outputs.filtered_targets }}
     steps:
