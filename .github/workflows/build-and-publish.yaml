@@ -234,13 +234,18 @@ jobs:
               elif [ "$REPRODUCIBLE" == "false" ]; then
                 echo "reproducible=❌  $BINARY is not reproducible for $TARGET" >> "$GITHUB_OUTPUT"
               fi
+      - name: "Rename build artifact"
+        env:
+          TARGET: "${{ matrix.target }}"
+          BINARY: "${{ inputs.binary-name }}"
+        run:  mv "targets/${TARGET}/release/${BINARY}" "targets/${TARGET}/release/${BINARY}-${TARGET}"
       - name: "Generate build provenance attestation"
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}"
+          subject-path: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}-${{ matrix.target }}"
       - name: "Upload binary as artifact"
         uses: softprops/action-gh-release@master
         with:
-          files: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}"
+          files: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}-${{ matrix.target }}"
           body: "${{ steps.reproducible-report.outputs.reproducible }}"
           append_body: true
