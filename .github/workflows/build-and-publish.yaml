@@ -203,9 +203,9 @@ jobs:
           BINARY: "${{ inputs.binary-name }}"
         run:  |
           output_path="target/${TARGET}/release/${BINARY}"
-          output_native_path="target/release/${BINARY}"
-          if [ ! -f "$output_path" ] && [ -f "$output_native_path" ]; then
-            output_path="$output_native_path"
+          if [ ! -f "$output_path" ]; then
+            echo "Failed to find binary! Possible finds:"
+            find / -name "*${BINARY}*"
           fi
           mv "$output_path" "target/${BINARY}-${TARGET}"
       - name: "Generate build provenance attestation"
