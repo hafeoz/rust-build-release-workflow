@@ -199,8 +199,11 @@ jobs:
               shift
             done
             exec "$@"
-          CARGO_FULL_CLEANUP: "rm -rf /target/* ./target"
-          CARGO_POST_CLEANUP: "find /target -name '*.d' -delete"
+          REPROTEST_CMD: >
+            rm -rf /target/* ./target &&
+            cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\" &&
+            find /target -name '*.d' -delete &&
+            cp -rvf /target ./target
           RELEASE_PATH_GLOB: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}*"
         run: |
               dockerfile="$(mktemp)"
@@ -213,10 +216,9 @@ jobs:
                 # Stub setarch as it doesn't work in docker
                 echo "COPY --chmod=555 setarch /usr/bin/setarch"
               } >> "$dockerfile"
-              reprotest_cmd="${CARGO_FULL_CLEANUP} && cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\" && ${CARGO_POST_CLEANUP}"
               CROSS_BUILD_DOCKERFILE="$dockerfile" \
                 cross-util run "--target=$TARGET" -- \
-                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"$reprotest_cmd && mv -r /target ./target\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
+                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
