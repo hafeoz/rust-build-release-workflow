@@ -133,6 +133,15 @@ jobs:
           fetch-depth: 0
       - name: "Install rust toolchain"
         uses: dtolnay/rust-toolchain@stable
+      - name: Cache cocogitto
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cocogitto-cargo
       - name: "Install cocogitto"
         run:  cargo install cocogitto
       - name: "Generate release notes"
@@ -180,6 +189,17 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: "Install cross-compilation tool"
         run:  cargo install cross --git "https://github.com/cross-rs/cross"
+      - name: "Cache cargo"
+        uses: "actions/cache@v4"
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+          restore-keys: "${{ matrix.target }}-cargo-"
       - name: "Build for target ${{ matrix.target }}"
         if:   "${{ !inputs.test-reproducibility }}"
         env:
