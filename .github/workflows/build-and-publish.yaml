@@ -199,11 +199,7 @@ jobs:
               shift
             done
             exec "$@"
-          REPROTEST_CMD: >
-            rm -rf /target/* ./target &&
-            cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\" &&
-            find /target -name '*.d' -delete &&
-            cp -rvf /target ./target
+          REPROTEST_CMD: 'CARGO_TARGET_DIR=./target cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\"'
           RELEASE_PATH_GLOB: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}*"
         run: |
               dockerfile="$(mktemp)"
@@ -220,10 +216,14 @@ jobs:
                 echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
                 echo "RUN useradd --create-home --user-group guest"
                 echo "RUN echo '$(id --user --name) ALL=(ALL:ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/reprotest"
+                echo "RUN echo '127.0.0.1 localhost' > /etc/hosts"
               } >> "$dockerfile"
               CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged --security-opt=no-new-privileges:false --security-opt seccomp=unconfined --security-opt apparmor=unconfined" \
                 cross-util run "--target=$TARGET" -- \
                   "reprotest \"--verbosity=$REPROTEST_VERBOSE\" --vary=user_group.available+=guest,domain_host.use_sudo=1 \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
+              if [ -e ./target ]; then
+                cp -rvf ./target/* /target/
+              fi
               if [ -f REPRODUCIBLE ]; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               elif [ -f NONREPRODUCIBLE ]; then
