@@ -193,9 +193,9 @@ jobs:
                 echo "RUN apt-get update >/dev/null 2>&1"
                 echo "RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1"
                 # Stub setarch as it doesn't work in docker
-                echo "RUN echo '#!/bin/sh' >> /usr/bin/setarch"
-                echo "RUN echo 'while [ \"${1##-*}\" == \"\" ]; do shift; done' >> /usr/bin/setarch"
-                echo "RUN echo 'exec \"\$\@\"' >> /usr/bin/setarch"
+                echo "RUN echo '#!/bin/sh' > /usr/bin/setarch"
+                echo "RUN echo 'while [ \"\${1##-*}\" == \"\" ]; do shift; done' >> /usr/bin/setarch"
+                echo "RUN echo 'exec \"\$@\"' >> /usr/bin/setarch"
                 echo "RUN chmod +x /usr/bin/setarch"
                 echo "RUN cat /usr/bin/setarch"
               } >> "$dockerfile"
