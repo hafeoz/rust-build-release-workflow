@@ -103,6 +103,7 @@ jobs:
       targets: ${{ steps.calculate.outputs.filtered_targets }}
     steps:
       - id: calculate
+        name: "Filter targets"
         env:
           REGEX: "${{ inputs.target-regex }}"
         run: |
