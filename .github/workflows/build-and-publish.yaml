@@ -182,7 +182,7 @@ jobs:
           CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
         run: |
               cross-util run "--target=$TARGET" -- \
-                "sudo apt-get install --yes reprotest"
+                "apt-get install --yes reprotest"
               if \
                 cross-util run "--target=$TARGET" -- \
                 "reprotest \"cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\"\" \
