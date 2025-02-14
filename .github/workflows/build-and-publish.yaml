@@ -188,7 +188,7 @@ jobs:
               if \
                 cross-util run "--target=$TARGET" -- \
                 "reprotest \"cargo build --release \\\"--target=$TARGET\\\" \\\"--package=$BINARY\\\"\" \
-                \"targets/${TARGET}/release/${BINARY}\""\
+                \"target/${TARGET}/release/${BINARY}\""\
               ; then
                 echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
               else
@@ -209,7 +209,7 @@ jobs:
         env:
           TARGET: "${{ matrix.target }}"
           BINARY: "${{ inputs.binary-name }}"
-        run:  mv "targets/${TARGET}/release/${BINARY}" "targets/${TARGET}/release/${BINARY}-${TARGET}"
+        run:  mv "target/${TARGET}/release/${BINARY}" "target/${TARGET}/release/${BINARY}-${TARGET}"
       - name: "Generate build provenance attestation"
         uses: actions/attest-build-provenance@v2
         with:
