@@ -185,7 +185,7 @@ jobs:
               {
                 echo "ARG CROSS_BASE_IMAGE"
                 echo "FROM \$CROSS_BASE_IMAGE"
-                echo "RUN apt-get install --yes reprotest sudo"
+                echo "RUN apt-get install -qq --yes reprotest sudo"
                 echo "RUN useradd --create-home --user-group guest"
                 echo "RUN echo ALL ALL=(ALL:ALL) NOPASSWD: ALL | sudo tee /etc/sudoers.d/reprotest"
               } >> "$dockerfile"
