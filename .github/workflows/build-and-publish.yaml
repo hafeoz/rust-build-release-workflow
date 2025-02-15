@@ -228,7 +228,7 @@ jobs:
             FROM $CROSS_BASE_IMAGE
             RUN apt-get update >/dev/null 2>&1
             RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1
-            COPY --chmod 555 /tmp/setarch /usr/bin/setarch
+            COPY --chmod=555 /tmp/setarch /usr/bin/setarch
           COMPILE_CMD: >
             CARGO_TARGET_DIR=./target
             cargo build
