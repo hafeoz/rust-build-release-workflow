@@ -238,7 +238,7 @@ jobs:
             #!/bin/sh
             # setarch [arch] [options] [program [argument...]]
             # A small script that replace setarch(8) with a dumb program caller - setarch is not supported in GitHub docker
-            /usr/bin/setarch_old "$1"
+            /usr/bin/setarch "$1"
             shift; while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do echo "::warning::Ignoring setarch $1"; shift; done
             exec "$@"
           CROSS_DOCKERFILE: |
@@ -287,8 +287,7 @@ jobs:
           echo "$COMPILER" > "$compiler_file"
           echo "$REPROTEST_RUNNER" > "$runner_file"
           {
-            echo "RUN mv /usr/bin/setarch /usr/bin/setarch_old"
-            echo "COPY --chmod=555 \"$setarch\" /usr/bin/setarch"
+            echo "COPY --chmod=555 \"$setarch\" /usr/local/bin/setarch"
             # WORKAROUND: add current user and group to database to make fusermount happy
             echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
             echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
