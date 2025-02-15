@@ -300,6 +300,7 @@ jobs:
           echo "$EXECUTABLE_FILTER" | base64 > "${env_dir}/executable_filter"
 
           env CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- "bash $runner_file \"$env_dir\""
+          find "$EXECUTABLE_DIR" \( -name "*.diffoscope.out" -or -name "SHA256SUMS" \) -and -type f -delete
 
           if [ -f "${env_dir}/REPRODUCIBLE" ]; then
             echo 'REPRODUCIBLE=true' >> "$GITHUB_ENV"
