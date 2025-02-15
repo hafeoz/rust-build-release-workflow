@@ -235,12 +235,19 @@ jobs:
           EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
           CROSS_CONTAINER_OPTS: '--privileged' # fuse driver needs privileged container; not a security problem since we're docker-in-docker
           SETARCH_STUB: |
-            #!/bin/sh
+            #!/bin/bash
             # setarch [arch] [options] [program [argument...]]
-            # A small script that replace setarch(8) with a dumb program caller - setarch is not supported in GitHub docker
-            /usr/bin/setarch "$1"
-            shift; while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do echo "::warning::Ignoring setarch $1"; shift; done
-            exec "$@"
+            echo "::debug::setarch called with $*"
+            args=()
+            args+=("$1")
+            shift; while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do
+              if [ "${1##--uname*}" == "" ]; then
+                args+=("$1")
+              else
+                echo "::warning::Ignoring setarch $1"; shift;
+              fi
+            done
+            exec /usr/bin/setarch "${args[@]}" "$@"
           CROSS_DOCKERFILE: |
             ARG CROSS_BASE_IMAGE
             FROM $CROSS_BASE_IMAGE
