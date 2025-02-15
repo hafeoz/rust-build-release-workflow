@@ -34,7 +34,7 @@ on:
       rust-flags:
         description: 'RUSTFLAGS environment variable used for compilation'
         type: string
-        default: ''
+        default: '-Z remap-cwd-prefix=.'
 
 jobs:
   calculate-matrix:
