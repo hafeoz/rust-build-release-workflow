@@ -17,6 +17,10 @@ on:
         description: 'Rust program name.'
         required: true
         type: string
+      rust-toolchain:
+        description: 'Rust toolchain to use.'
+        type: string
+        default: 'nightly'
       rust-flags:
         description: 'RUSTFLAGS environment variable used when compilation.'
         type: string
@@ -180,20 +184,29 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: 'Install rust toolchain'
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain
+        with:
+          toolchain: '${{ inputs.rust-toolchain }}'
       - name: 'Install rust-cross'
         env:
           RUSTFLAGS: "-C opt-level=0 -C panic=abort -C target-cpu=native"
         run: cargo install cross --git 'https://github.com/cross-rs/cross'
+      - name: 'Evaluate RUSTFLAGS for rust-cross'
+        env:
+          TARGET: '${{ matrix.target }}'
+          RUSTFLAGS: '${{ inputs.rust-flags }}'
+        run: |
+          {
+            echo "CARGO_TARGET_$(echo "$TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_' )_RUSTFLAGS<<EOF"
+            echo "${RUSTFLAGS/EOF/}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
       - name: 'Build for target ${{ matrix.target }} without reproducibility test'
         if: '${{ !inputs.test-reproducibility }}'
         env:
           TARGET: '${{ matrix.target }}'
           CARGO_TERM_VERBOSE: '${{ inputs.cargo-verbose }}'
-          RUSTFLAGS: '${{ inputs.rust-flags }}'
-        run: >
-          env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${RUSTFLAGS}"
-          cross build --release "--target=$TARGET"
+        run: cross build --release "--target=$TARGET"
       - name: 'Build for target ${{ matrix.target }} and test for reproducibility'
         if: '${{ inputs.test-reproducibility }}'
         env:
@@ -203,7 +216,6 @@ jobs:
           FAIL_IF_UNREPRODUCIBLE: '${{ inputs.fail-if-unreproducible }}'
           REPROTEST_VARY: '${{ inputs.reprotest-variations }}'
           RELEASE_PATH_GLOB: 'target/${{ matrix.target }}/release/${{ inputs.binary-name }}*'
-          RUSTFLAGS: '${{ inputs.rust-flags }}'
           CROSS_CONTAINER_OPTS: '--privileged' # fuse driver needs privileged container; not a security problem since we're docker-in-docker
           SETARCH_STUB: |
             #!/bin/sh
@@ -230,7 +242,6 @@ jobs:
           echo "$SETARCH_STUB" > /tmp/setarch
           echo "$CROSS_DOCKERFILE" > "$dockerfile"
           env \
-          "CARGO_TARGET_${TARGET}_RUSTFLAGS=${RUSTFLAGS}" \
           CROSS_BUILD_DOCKERFILE="$dockerfile" \
             cross-util run "--target=$TARGET" -- \
               "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$COMPILE_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE"
