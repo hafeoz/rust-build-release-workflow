@@ -13,10 +13,15 @@ on:
                       By default all tier 1 and 2 rust targets will be built.'
         type: string
         default: '[]'
-      binary-name:
-        description: 'Rust program name.'
-        required: true
+      executable-filter:
+        description: 'jq filter that extract executable path from cargo json messages.'
         type: string
+        default: '.[] |
+          select(
+            (.reason == "compiler-artifact") and
+            (.executable != null) and
+            (.target.kind == ["bin"])
+          ) | .executable'
       rust-toolchain:
         description: 'Rust toolchain to use.'
         type: string
@@ -199,14 +204,20 @@ jobs:
           {
             echo "CARGO_TARGET_$(echo "$TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_' )_RUSTFLAGS<<EOF"
             echo "${RUSTFLAGS/EOF/}"
-            echo "EOF"
+            echo EOF
           } >> "$GITHUB_ENV"
       - name: 'Build for target ${{ matrix.target }} without reproducibility test'
         if: '${{ !inputs.test-reproducibility }}'
         env:
           TARGET: '${{ matrix.target }}'
           CARGO_TERM_VERBOSE: '${{ inputs.cargo-verbose }}'
-        run: cross build --release "--target=$TARGET"
+          EXECUTABLE_FILTER: '${{ inputs.executable-filter }}'
+        run: |
+          cross build --release "--target=$TARGET"
+          mkdir target_executables
+          cross build --release "--target=$TARGET" --message-format=json | jq -s --raw-output0 "$EXECUTABLE_FILTER" | while IFS= read -r -d $'\0' file; do
+            cp "$file" ./target_executables/
+          done
       - name: 'Build for target ${{ matrix.target }} and test for reproducibility'
         if: '${{ inputs.test-reproducibility }}'
         env:
@@ -215,7 +226,6 @@ jobs:
           REPROTEST_VERBOSE: '${{ inputs.reprotest-verbose }}'
           FAIL_IF_UNREPRODUCIBLE: '${{ inputs.fail-if-unreproducible }}'
           REPROTEST_VARY: '${{ inputs.reprotest-variations }}'
-          RELEASE_PATH_GLOB: 'target/${{ matrix.target }}/release/${{ inputs.binary-name }}*'
           CROSS_CONTAINER_OPTS: '--privileged' # fuse driver needs privileged container; not a security problem since we're docker-in-docker
           SETARCH_STUB: |
             #!/bin/sh
@@ -229,15 +239,26 @@ jobs:
             RUN apt-get update >/dev/null 2>&1
             RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1
             COPY --chmod=555 setarch_stub /usr/bin/setarch
-          COMPILE_CMD: >
-            env CARGO_TARGET_DIR=./target RUSTFLAGS=\"${{ inputs.rust-flags }}\"
-            cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\"
-            && rm -rf \"$CARGO_TARGET_DIR/*\"
-            && cp -vaf ./target/. \"$CARGO_TARGET_DIR/\"
+          COMPILER: |
+            #!/usr/bin/env bash
+            set -o errexit -o nounset -o pipefail
+            env CARGO_TARGET_DIR=./targets \
+              cargo build --release \"--target=${{ matrix.target }}\"
+            mkdir target_executables
+            env CARGO_TARGET_DIR=./targets \
+              cargo build --release \"--target=${{ matrix.target }}\" --message-format=json \
+              | jq -s --raw-output0 "${{ inputs.executable-filter }}" \
+              | while IFS= read -r -d $'\0' file; do
+                cp "$file" ./target_executables/
+              done
+          MOVE_FILES: >
+            find \"$CARGO_TARGET_DIR\" -mindepth 1 -delete;
+            find target_executables/ -print0 | xargs -0 mv -t \"$CARGO_TARGET_DIR\"
         run: |
           dockerfile="$(mktemp)"
           echo "$SETARCH_STUB" > setarch_stub
           echo "$CROSS_DOCKERFILE" > "$dockerfile"
+          echo "$COMPILER" > compile.sh
           # WORKAROUND: add current user and group to database to make fusermount happy
           {
             echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
@@ -247,7 +268,8 @@ jobs:
           env \
           CROSS_BUILD_DOCKERFILE="$dockerfile" \
             cross-util run "--target=$TARGET" -- \
-              "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$COMPILE_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE"
+              "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"bash compile.sh\" \"target_executables/*\" && touch REPRODUCIBLE; $MOVE_FILES"
+          mv target target_executables
 
           if [ -f REPRODUCIBLE ]; then
             echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
@@ -262,42 +284,23 @@ jobs:
         id: reproducible-report
         env:
           TARGET: '${{ matrix.target }}'
-          BINARY: '${{ inputs.binary-name }}'
         run: |
           if [ "$REPRODUCIBLE" == "true" ]; then
-            echo "reproducible=✅  $BINARY is reproducible for $TARGET" >> "$GITHUB_OUTPUT"
+            echo "reproducible=✅  ${TARGET}'s binary is reproducible" >> "$GITHUB_OUTPUT"
           elif [ "$REPRODUCIBLE" == "false" ]; then
-            echo "reproducible=❌  $BINARY is not reproducible for $TARGET" >> "$GITHUB_OUTPUT"
+            echo "reproducible=❌  ${TARGET}'s binary is not reproducible" >> "$GITHUB_OUTPUT"
           fi
       - name: 'Rename build artifact'
-        id: move-artifact
         env:
-          SRC_PATH: 'target/${{ matrix.target }}/release/${{ inputs.binary-name }}'
-          DST_PATH: 'target/${{ inputs.binary-name }}-${{ matrix.target }}'
-          FIND_NAME: '${{ inputs.binary-name }}*'
-        run: |
-          if [ -f "$SRC_PATH" ]; then
-            mv "$SRC_PATH" "$DST_PATH"
-            echo "OUTPUT_PATH=$DST_PATH" >> "$GITHUB_OUTPUT"
-          elif [ -f "${SRC_PATH}.exe" ]; then
-            mv "${SRC_PATH}.exe" "${DST_PATH}.exe"
-            echo "OUTPUT_PATH=${DST_PATH}.exe" >> "$GITHUB_OUTPUT"
-          elif [ -f "${SRC_PATH}.js" ]; then
-            mv "${SRC_PATH}.js" "${DST_PATH}.js"
-            echo "OUTPUT_PATH=${DST_PATH}.js" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::Build artifact not found"
-            echo "Possible files in target/ directory:"
-            find target/ -type f -name "$FIND_NAME" 2>/dev/null
-            exit 1
-          fi
+          TARGET: '${{ matrix.target }}'
+        run: find target_executables -type f -exec mv -v '{}' "{}-$TARGET" \;
       - name: 'Generate build provenance attestation'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: '${{ steps.move-artifact.outputs.OUTPUT_PATH }}'
+          subject-path: 'target_executables/*'
       - name: 'Upload binary as artifact'
         uses: softprops/action-gh-release@master
         with:
-          files: '${{ steps.move-artifact.outputs.OUTPUT_PATH }}'
+          files: 'target_executables/*'
           body: '${{ steps.reproducible-report.outputs.reproducible }}'
           append_body: true
