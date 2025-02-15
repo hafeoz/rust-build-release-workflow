@@ -18,9 +18,9 @@ on:
         type: string
         default: '.[] |
           select(
-            (.reason == "compiler-artifact") and
+            (.reason == ''compiler-artifact'') and
             (.executable != null) and
-            (.target.kind == ["bin"])
+            (.target.kind == [''bin''])
           ) | .executable'
       rust-toolchain:
         description: 'Rust toolchain to use.'
