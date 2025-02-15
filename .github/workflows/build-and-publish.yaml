@@ -258,7 +258,7 @@ jobs:
               cargo build --release "--target=$target" --message-format=json \
               | jq -sr "$executable_filter" \
               | while IFS= read -r file; do
-                cp "$file" "${output_dir}/" || (ls -lha; pwd; exit 1)
+                cp "$file" "${output_dir}/"
               done
           REPROTEST_RUNNER: |
             #!/usr/bin/env bash
