@@ -208,26 +208,31 @@ jobs:
             echo "${RUSTFLAGS/EOF/}"
             echo EOF
           } >> "$GITHUB_ENV"
+      - name: 'Create temporary directory for storing executables'
+        id: mktemp-executable
+        run: echo "EXECUTABLE_DIR=$(mktemp -dp "$(pwd)")" >> "$GITHUB_OUTPUT"
       - name: 'Build for target ${{ matrix.target }} without reproducibility test'
         if: '${{ !inputs.test-reproducibility }}'
         env:
           TARGET: '${{ matrix.target }}'
           CARGO_TERM_VERBOSE: '${{ inputs.cargo-verbose }}'
           EXECUTABLE_FILTER: '${{ inputs.executable-filter }}'
+          EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
         run: |
           cross build --release "--target=$TARGET"
-          mkdir target_executables
           cross build --release "--target=$TARGET" --message-format=json | jq -sr "$EXECUTABLE_FILTER" | while IFS= read -r file; do
-            cp "$file" ./target_executables/
+            cp -v "$file" "${EXECUTABLE_DIR}/"
           done
       - name: 'Build for target ${{ matrix.target }} and test for reproducibility'
         if: '${{ inputs.test-reproducibility }}'
         env:
           TARGET: '${{ matrix.target }}'
+          EXECUTABLE_FILTER: '${{ inputs.executable-filter }}'
           CARGO_TERM_VERBOSE: '${{ inputs.cargo-verbose }}'
           REPROTEST_VERBOSE: '${{ inputs.reprotest-verbose }}'
           FAIL_IF_UNREPRODUCIBLE: '${{ inputs.fail-if-unreproducible }}'
           REPROTEST_VARY: '${{ inputs.reprotest-variations }}'
+          EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
           CROSS_CONTAINER_OPTS: '--privileged' # fuse driver needs privileged container; not a security problem since we're docker-in-docker
           SETARCH_STUB: |
             #!/bin/sh
@@ -240,40 +245,63 @@ jobs:
             FROM $CROSS_BASE_IMAGE
             RUN apt-get update >/dev/null 2>&1
             RUN apt-get install --yes reprotest diffoscope jq >/dev/null 2>&1
-            COPY --chmod=555 setarch_stub /usr/bin/setarch
           COMPILER: |
             #!/usr/bin/env bash
             set -o errexit -o nounset -o pipefail
-            env CARGO_TARGET_DIR=./targets \
-              cargo build --release "--target=${{ matrix.target }}"
-            mkdir target_executables
-            env CARGO_TARGET_DIR=./targets \
-              cargo build --release "--target=${{ matrix.target }}" --message-format=json \
-              | jq -sr '${{ inputs.executable-filter }}' \
+            target="$(cat "${ENV_DIR}/target" | base64 -d)"
+            output_dir="$(cat "${ENV_DIR}/output_dir" | base64 -d)"
+            executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
+            tmp_output_dir="$(mktemp -d)"
+            env "CARGO_TARGET_DIR=$tmp_output_dir" \
+              cargo build --release "--target=$target"
+            env "CARGO_TARGET_DIR=$tmp_output_dir" \
+              cargo build --release "--target=$target" --message-format=json \
+              | jq -sr "$executable_filter" \
               | while IFS= read -r file; do
-                cp "$file" ./target_executables/
+                cp "$file" "${output_dir}/"
               done
-          MOVE_FILES: >
-            find "$CARGO_TARGET_DIR" -mindepth 1 -delete;
-            find target_executables/ -exec mv -t "$CARGO_TARGET_DIR" {} +
+          REPROTEST_RUNNER: |
+            #!/usr/bin/env bash
+            set -o errexit -o nounset -o pipefail
+            env_dir="$1"
+            output_dir="$(mktemp -dp .)"
+            echo "$output_dir" | base64 > "${env_dir}/output_dir"
+            REPROTEST_VERBOSE="$(cat "${env_dir}/reprotest_verbose" | base64 -d)"
+            REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
+            EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
+            COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
+            env "ENV_DIR=$env_dir" reprotest \
+              "--store-dir=$EXECUTABLE_DIR" \
+              "--verbosity=$REPROTEST_VERBOSE" \
+              "--variations=$REPROTEST_VARY" \
+              "bash $COMPILER_FILE" "$output_dir" \
+              && touch "${env_dir}/REPRODUCIBLE"
         run: |
           dockerfile="$(mktemp)"
-          echo "$SETARCH_STUB" > setarch_stub
+          setarch="$(mktemp -p .)"
+          compiler_file="$(mktemp -p .)"
+          runner_file="$(mktemp -p .)"
+          echo "$SETARCH_STUB" > "$setarch"
           echo "$CROSS_DOCKERFILE" > "$dockerfile"
-          echo "$COMPILER" > compile.sh
-          # WORKAROUND: add current user and group to database to make fusermount happy
+          echo "$COMPILER" > "$compiler_file"
+          echo "$REPROTEST_RUNNER" > "$runner_file"
           {
+            echo "COPY --chmod=555 \"$setarch\" /usr/bin/setarch"
+            # WORKAROUND: add current user and group to database to make fusermount happy
             echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
             echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
           } >> "$dockerfile"
+          env_dir="$(mktemp -dp .)"
+          echo "$TARGET" | base64 > "${env_dir}/target"
+          echo "$REPROTEST_VERBOSE" | base64 > "${env_dir}/reprotest_verbose"
+          echo "$REPROTEST_VARY" | base64 > "${env_dir}/reprotest_vary"
+          echo "$EXECUTABLE_DIR" | base64 > "${env_dir}/executable_dir"
+          echo "$compiler_file" | base64 > "${env_dir}/compiler_file"
+          echo "$EXECUTABLE_FILTER" > "${env_dir}/executable_filter"
 
-          env \
-          CROSS_BUILD_DOCKERFILE="$dockerfile" \
-            cross-util run "--target=$TARGET" -- \
-              "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"bash compile.sh\" \"target_executables/*\" && touch REPRODUCIBLE; $MOVE_FILES"
-          mv target target_executables
+          env CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- "bash $runner_file \"$env_dir\""
 
-          if [ -f REPRODUCIBLE ]; then
+          if [ -f "${env_dir}/REPRODUCIBLE" ]; then
             echo 'REPRODUCIBLE=true' >> "$GITHUB_ENV"
           else
             echo 'REPRODUCIBLE=false' >> "$GITHUB_ENV"
@@ -295,7 +323,8 @@ jobs:
       - name: 'Rename build artifact'
         env:
           TARGET: '${{ matrix.target }}'
-        run: find target_executables -type f -exec mv -v '{}' "{}-$TARGET" \;
+          EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
+        run: find "$EXECUTABLE_DIR" -type f -exec mv -v '{}' "{}-$TARGET" \;
       - name: 'Generate build provenance attestation'
         uses: actions/attest-build-provenance@v2
         with:
@@ -303,6 +332,6 @@ jobs:
       - name: 'Upload binary as artifact'
         uses: softprops/action-gh-release@master
         with:
-          files: 'target_executables/*'
+          files: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
           body: '${{ steps.reproducible-report.outputs.reproducible }}'
           append_body: true
