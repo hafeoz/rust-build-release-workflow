@@ -237,7 +237,7 @@ jobs:
             ARG CROSS_BASE_IMAGE
             FROM $CROSS_BASE_IMAGE
             RUN apt-get update >/dev/null 2>&1
-            RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1
+            RUN apt-get install --yes reprotest diffoscope jq >/dev/null 2>&1
             COPY --chmod=555 setarch_stub /usr/bin/setarch
           COMPILER: |
             #!/usr/bin/env bash
