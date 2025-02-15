@@ -238,10 +238,17 @@ jobs:
           dockerfile="$(mktemp)"
           echo "$SETARCH_STUB" > setarch_stub
           echo "$CROSS_DOCKERFILE" > "$dockerfile"
+          # WORKAROUND: add current user and group to database to make fusermount happy
+          {
+            echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
+            echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
+          } >> "$dockerfile"
+
           env \
           CROSS_BUILD_DOCKERFILE="$dockerfile" \
             cross-util run "--target=$TARGET" -- \
               "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$COMPILE_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE"
+
           if [ -f REPRODUCIBLE ]; then
             echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
           else
