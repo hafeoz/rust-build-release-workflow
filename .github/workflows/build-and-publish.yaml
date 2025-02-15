@@ -215,7 +215,7 @@ jobs:
         run: |
           cross build --release "--target=$TARGET"
           mkdir target_executables
-          cross build --release "--target=$TARGET" --message-format=json | jq -s --raw-output0 "$EXECUTABLE_FILTER" | while IFS= read -r -d $'\0' file; do
+          cross build --release "--target=$TARGET" --message-format=json | jq -sr "$EXECUTABLE_FILTER" | while IFS= read -r file; do
             cp "$file" ./target_executables/
           done
       - name: 'Build for target ${{ matrix.target }} and test for reproducibility'
@@ -247,8 +247,8 @@ jobs:
             mkdir target_executables
             env CARGO_TARGET_DIR=./targets \
               cargo build --release "--target=${{ matrix.target }}" --message-format=json \
-              | jq -s --raw-output0 "${{ inputs.executable-filter }}" \
-              | while IFS= read -r -d $'\0' file; do
+              | jq -sr "${{ inputs.executable-filter }}" \
+              | while IFS= read -r file; do
                 cp "$file" ./target_executables/
               done
           MOVE_FILES: >
