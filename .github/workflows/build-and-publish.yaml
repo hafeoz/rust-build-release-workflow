@@ -258,7 +258,7 @@ jobs:
               cargo build --release "--target=$target" --message-format=json \
               | jq -sr "$executable_filter" \
               | while IFS= read -r file; do
-                cp "$file" "${output_dir}/"
+                cp "$file" "${output_dir}/" || (ls -lha; pwd; exit 1)
               done
           REPROTEST_RUNNER: |
             #!/usr/bin/env bash
@@ -274,7 +274,7 @@ jobs:
               "--store-dir=$EXECUTABLE_DIR" \
               "--verbosity=$REPROTEST_VERBOSE" \
               "--variations=$REPROTEST_VARY" \
-              "bash $COMPILER_FILE" "$output_dir" \
+              "bash $COMPILER_FILE" "${output_dir}/*" \
               && touch "${env_dir}/REPRODUCIBLE"
         run: |
           dockerfile="$(mktemp)"
