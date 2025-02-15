@@ -122,8 +122,10 @@ jobs:
             triple="$(echo "$triple" | xargs)"
             if [[ "$triple" =~ $REGEX ]]; then filtered="${filtered}${triple};"; fi
           done <<< "$TARGETS"
-          echo -n "filtered_targets=" >> "$GITHUB_OUTPUT"
-          echo -n "${filtered%\;}" | jq -Rsc 'split(";")' >> "$GITHUB_OUTPUT"
+          {
+            echo -n "filtered_targets="
+            echo -n "${filtered%\;}" | jq -Rsc 'split(";")'
+          } >> "$GITHUB_OUTPUT"
 
   generate-releasenotes:
     name: 'Generate changelog'
@@ -146,18 +148,18 @@ jobs:
           latest_tag="$(git describe --tags --abbrev=0)"
           prev_tag="$(git describe --tags --abbrev=0 "$latest_tag"^)"
 
-          print_strip_eof() { sed s/"EOF"//g "$1"; }
+          print_strip_eof() { sed 's/EOF//g' "$1"; }
 
           cog_changelog() { cog changelog --template full_hash --at "$latest_tag"; }
-          git_changelog() { echo "### $latest_tag"; echo "#### Commits"; git log --oneline "${prev_tag}..${latest_tag}"; }
+          git_changelog() { echo "### $latest_tag"; echo '#### Commits'; git log --oneline "${prev_tag}..${latest_tag}"; }
           changelog="$(cog_changelog || git_changelog)"
 
           {
-            echo "changelog<<EOF"
+            echo 'changelog<<EOF'
 
-            if [ -f "RELEASE_NOTES.pre.md" ]; then print_strip_eof "RELEASE_NOTES.pre.md"; fi
+            if [ -f 'RELEASE_NOTES.pre.md' ]; then print_strip_eof 'RELEASE_NOTES.pre.md'; fi
             echo "${changelog/EOF/}"
-            if [ -f "RELEASE_NOTES.md" ]; then print_strip_eof "RELEASE_NOTES.md"; fi
+            if [ -f 'RELEASE_NOTES.md' ]; then print_strip_eof 'RELEASE_NOTES.md'; fi
 
             echo EOF
           } >> "$GITHUB_OUTPUT"
@@ -272,10 +274,10 @@ jobs:
           mv target target_executables
 
           if [ -f REPRODUCIBLE ]; then
-            echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
+            echo 'REPRODUCIBLE=true' >> "$GITHUB_ENV"
           else
-            echo "REPRODUCIBLE=false" >> "$GITHUB_ENV"
-            if [ "$FAIL_IF_UNREPRODUCIBLE" == "true" ]; then
+            echo 'REPRODUCIBLE=false' >> "$GITHUB_ENV"
+            if [ "$FAIL_IF_UNREPRODUCIBLE" == 'true' ]; then
               echo "::error::Binary is not reproducible"
               exit 1
             fi
@@ -285,9 +287,9 @@ jobs:
         env:
           TARGET: '${{ matrix.target }}'
         run: |
-          if [ "$REPRODUCIBLE" == "true" ]; then
+          if [ "$REPRODUCIBLE" == 'true' ]; then
             echo "reproducible=✅  ${TARGET}'s binary is reproducible" >> "$GITHUB_OUTPUT"
-          elif [ "$REPRODUCIBLE" == "false" ]; then
+          elif [ "$REPRODUCIBLE" == 'false' ]; then
             echo "reproducible=❌  ${TARGET}'s binary is not reproducible" >> "$GITHUB_OUTPUT"
           fi
       - name: 'Rename build artifact'
