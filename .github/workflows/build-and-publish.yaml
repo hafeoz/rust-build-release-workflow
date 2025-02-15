@@ -184,7 +184,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: 'Install rust toolchain'
-        uses: dtolnay/rust-toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: '${{ inputs.rust-toolchain }}'
       - name: 'Install rust-cross'
