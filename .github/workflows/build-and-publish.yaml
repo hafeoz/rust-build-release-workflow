@@ -231,10 +231,7 @@ jobs:
             COPY --chmod=555 setarch_stub /usr/bin/setarch
           COMPILE_CMD: >
             CARGO_TARGET_DIR=./target
-            cargo build
-              --release
-              \"--target=${{ matrix.target }}\"
-              \"--package=${{ inputs.binary-name }}\"
+            cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\"
             && rm -rf \"$CARGO_TARGET_DIR/*\"
             && cp -vaf ./target/. \"$CARGO_TARGET_DIR/\"
         run: |
