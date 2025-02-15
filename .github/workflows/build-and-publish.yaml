@@ -141,7 +141,7 @@ jobs:
       - name: 'Install cocogitto'
         env:
           RUSTFLAGS: '-C opt-level=0 -C panic=abort -C target-cpu=native'
-        run: cargo install cocogitto
+        run: cargo install cocogitto --git 'https://github.com/cocogitto/cocogitto' --rev '445c60371415f3dea3a8bc06e8593e1ca4715d6a'
       - name: 'Generate changelog'
         id: cog
         run: |
@@ -171,7 +171,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: generate-releasenotes
     steps:
-      - uses: softprops/action-gh-release@master
+      - uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
         with:
           body: '${{ needs.generate-releasenotes.outputs.changelog }}'
 
@@ -189,7 +189,7 @@ jobs:
         target: '${{ fromJSON(needs.calculate-matrix.outputs.targets) }}'
         exclude: '${{ fromJSON(inputs.skip-target) }}'
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
       - name: 'Install rust toolchain'
         uses: dtolnay/rust-toolchain@master
         with:
@@ -331,7 +331,7 @@ jobs:
         with:
           subject-path: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}/**'
       - name: 'Upload binary as artifact'
-        uses: softprops/action-gh-release@master
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
         with:
           files: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}/**'
           body: '${{ steps.reproducible-report.outputs.reproducible }}'
