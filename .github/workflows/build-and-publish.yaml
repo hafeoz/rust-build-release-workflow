@@ -230,7 +230,7 @@ jobs:
             RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1
             COPY --chmod=555 setarch_stub /usr/bin/setarch
           COMPILE_CMD: >
-            CARGO_TARGET_DIR=./target
+            env CARGO_TARGET_DIR=./target RUSTFLAGS=\"${{ inputs.rust-flags }}\"
             cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\"
             && rm -rf \"$CARGO_TARGET_DIR/*\"
             && cp -vaf ./target/. \"$CARGO_TARGET_DIR/\"
