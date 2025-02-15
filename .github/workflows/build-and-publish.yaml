@@ -243,17 +243,17 @@ jobs:
             #!/usr/bin/env bash
             set -o errexit -o nounset -o pipefail
             env CARGO_TARGET_DIR=./targets \
-              cargo build --release \"--target=${{ matrix.target }}\"
+              cargo build --release "--target=${{ matrix.target }}"
             mkdir target_executables
             env CARGO_TARGET_DIR=./targets \
-              cargo build --release \"--target=${{ matrix.target }}\" --message-format=json \
+              cargo build --release "--target=${{ matrix.target }}" --message-format=json \
               | jq -s --raw-output0 "${{ inputs.executable-filter }}" \
               | while IFS= read -r -d $'\0' file; do
                 cp "$file" ./target_executables/
               done
           MOVE_FILES: >
-            find \"$CARGO_TARGET_DIR\" -mindepth 1 -delete;
-            find target_executables/ -print0 | xargs -0 mv -t \"$CARGO_TARGET_DIR\"
+            find "$CARGO_TARGET_DIR" -mindepth 1 -delete;
+            find target_executables/ -print0 | xargs -0 mv -t "$CARGO_TARGET_DIR"
         run: |
           dockerfile="$(mktemp)"
           echo "$SETARCH_STUB" > setarch_stub
