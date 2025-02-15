@@ -328,10 +328,10 @@ jobs:
       - name: 'Generate build provenance attestation'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: 'target_executables/*'
+          subject-path: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}/*'
       - name: 'Upload binary as artifact'
         uses: softprops/action-gh-release@master
         with:
-          files: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
+          files: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}/*'
           body: '${{ steps.reproducible-report.outputs.reproducible }}'
           append_body: true
