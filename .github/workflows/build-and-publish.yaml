@@ -3,24 +3,37 @@ name: Build rust program and publish as GitHub release
 on:
   workflow_call:
     inputs:
-      skip-target:
-        description: 'Targets that should not build against, as array of strings. By default all tier 1 and 2 rust targets will be built.'
-        type: string
-        default: "[]"
       target-regex:
-        description: 'Only build targets matching such regex.'
+        description: 'Only build targets matching regex specified.
+                      By default all GUN Target Triplet-conforming targets are considered.'
         type: string
-        default: "^([^-]+)-([^-]+)-([^-]+)(-([^-]+))?$"
+        default: '^([^-]+)-([^-]+)-([^-]+)(-([^-]+))?$'
+      skip-target:
+        description: 'Targets that should not build against, as array of strings.
+                      By default all tier 1 and 2 rust targets will be built.'
+        type: string
+        default: '[]'
       binary-name:
-        description: 'Rust package name'
+        description: 'Rust program name.'
         required: true
         type: string
+      rust-flags:
+        description: 'RUSTFLAGS environment variable used when compilation.'
+        type: string
+        default: '-Z remap-cwd-prefix=.'
       test-reproducibility:
         description: 'Whether to check if binary is reproducible.'
         type: boolean
         default: true
+      reprotest-variations:
+        description: 'Variations to test for reproducibility, as comma-separated of strings.
+                      By default all variations except time (cause rustc to SIGSEGV) and domain_host (unsupported for GitHub runner) is enabled.
+                      Note user_group and domain_host is currently not supported.'
+        type: string
+        default: '+all,-time,-domain_host'
       fail-if-unreproducible:
-        description: 'Whether to fail workflow if binary is unreproducible. Unreproducible binaries are logged but not failed by default.'
+        description: 'Whether to fail the workflow if binary is unreproducible.
+                      By default unreproducible binaries are warned but not failed.'
         type: boolean
         default: false
       cargo-verbose:
@@ -28,17 +41,13 @@ on:
         type: boolean
         default: false
       reprotest-verbose:
-        description: 'Level of verbosity for reprotest. 0~2 supported.'
+        description: 'Level of verbosity (0~2) for reprotest.'
         type: number
         default: 1
-      rust-flags:
-        description: 'RUSTFLAGS environment variable used for compilation'
-        type: string
-        default: '-Z remap-cwd-prefix=.'
 
 jobs:
   calculate-matrix:
-    name: "Filter targets to build using regex"
+    name: 'Filter targets to build'
     runs-on: ubuntu-latest
     env:
       TARGETS: |
@@ -80,211 +89,200 @@ jobs:
         i686-linux-android                  # 32-bit x86 Android (Pentium 4 plus various extensions)
         i686-unknown-freebsd                # 32-bit x86 FreeBSD (Pentium 4)
         sparc64-unknown-linux-gnu           # SPARC Linux (kernel 4.4, glibc 2.23)
-        # https://github.com/cross-rs/cross/issues/1599
-        #sparcv9-sun-solaris                 # SPARC V9 Solaris 11.4
+        # BUG: https://github.com/cross-rs/cross/issues/1599
+        # sparcv9-sun-solaris               # SPARC V9 Solaris 11.4
         thumbv7neon-linux-androideabi       # Thumb2-mode Armv7-A Android with NEON
         thumbv7neon-unknown-linux-gnueabihf # Thumb2-mode Armv7-A Linux with NEON (kernel 4.4, glibc 2.23)
         wasm32-unknown-emscripten           # WebAssembly via Emscripten
         x86_64-linux-android                # 64-bit x86 Android
-        # https://github.com/cross-rs/cross/issues/1599
-        #x86_64-pc-solaris                   # 64-bit x86 Solaris 11.4
+        # BUG: https://github.com/cross-rs/cross/issues/1599
+        # x86_64-pc-solaris                 # 64-bit x86 Solaris 11.4
     outputs:
-      targets: ${{ steps.calculate.outputs.filtered_targets }}
+      targets: '${{ steps.calculate.outputs.filtered_targets }}'
     steps:
-      - id: calculate
-        name: "Filter targets"
+      - name: 'Filter targets'
+        id: calculate
         env:
-          REGEX: "${{ inputs.target-regex }}"
+          REGEX: '${{ inputs.target-regex }}'
         run: |
-              filtered=""
-              while read -r target; do
-                # Trim comments
-                target="${target%%\#*}"
-                # Trim whitespaces
-                target="$(echo "$target" | xargs)"
-                # Do not run on empty lines
-                if [ "$target" == "" ]; then continue; fi
-                if [[ "$target" =~ $REGEX ]]; then filtered="${filtered}${target};"; fi
-              done <<< "$TARGETS"
-              filtered="${filtered%\;}"
-              echo "Following targets will be built: ${filtered}"
-              echo -n "filtered_targets=" >> "$GITHUB_OUTPUT"
-              echo -n "$filtered" | jq --raw-input --slurp --compact-output 'split(";")' >> "$GITHUB_OUTPUT"
+          filtered=""
+          while read -r triple; do
+            # Trim comments
+            triple="${triple%%\#*}"
+            # Trim whitespaces
+            triple="$(echo "$triple" | xargs)"
+            if [[ "$triple" =~ $REGEX ]]; then filtered="${filtered}${triple};"; fi
+          done <<< "$TARGETS"
+          echo -n "filtered_targets=" >> "$GITHUB_OUTPUT"
+          echo -n "${filtered%\;}" | jq -rsc 'split(";")' >> "$GITHUB_OUTPUT"
 
   generate-releasenotes:
-    name: "Generate changelog from Semantic Commits"
+    name: 'Generate changelog'
     runs-on: ubuntu-latest
     outputs:
-      changelog: "${{ steps.cog.outputs.changelog }}"
+      changelog: '${{ steps.cog.outputs.changelog }}'
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: "Install rust toolchain"
+          fetch-depth: 0 # Fetch whole git history
+      - name: 'Install rust toolchain'
         uses: dtolnay/rust-toolchain@stable
-      - name: "Install cocogitto"
+      - name: 'Install cocogitto'
         env:
-          RUSTFLAGS: "-C opt-level=0 -C panic=abort -C target-cpu=native"
-        run:  cargo install cocogitto
-      - name: "Generate changelog"
-        id:   cog
+          RUSTFLAGS: '-C opt-level=0 -C panic=abort -C target-cpu=native'
+        run: cargo install cocogitto
+      - name: 'Generate changelog'
+        id: cog
         run: |
-              changelog="$(cog changelog --template full_hash "$(git rev-list -n 1 "$(git describe --tags --abbrev=0)").." \
-                || (echo "#### Commits"; git log --oneline \
-                  "$(git describe --tags --abbrev=0 "$(git describe --tags --abbrev=0)"^)..$(git describe --tags --abbrev=0)"))"
-              {
-                echo "changelog<<EOF"
-                if [ -f "RELEASE_NOTES.pre.md" ]; then
-                  sed s/"EOF"//g RELEASE_NOTES.pre.md
-                fi
-                echo "${changelog/EOF/}"
-                if [ -f "RELEASE_NOTES.md" ]; then
-                  sed s/"EOF"//g RELEASE_NOTES.md
-                fi
-                echo EOF
-              } >> "$GITHUB_OUTPUT"
-              unset changelog
+          latest_tag="$(git describe --tags --abbrev=0)"
+          prev_tag="$(git describe --tags --abbrev=0 "$latest_tag"^)"
+
+          print_strip_eof() { sed s/"EOF"//g "$1"; }
+
+          cog_changelog() { cog changelog --template full_hash --at "$latest_tag"; }
+          git_changelog() { echo "### $latest_tag"; echo "#### Commits"; git log --oneline "${prev_tag}..${latest_tag}"; }
+          changelog="$(cog_changelog || git_changelog)"
+
+          {
+            echo "changelog<<EOF"
+
+            if [ -f "RELEASE_NOTES.pre.md" ]; then print_strip_eof "RELEASE_NOTES.pre.md"; fi
+            echo "${changelog/EOF/}"
+            if [ -f "RELEASE_NOTES.md" ]; then print_strip_eof "RELEASE_NOTES.md"; fi
+
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
 
   publish-release:
     permissions:
-      contents: write      # action-gh-release (write)
-    name: "Create GitHub release and publish changelog"
+      contents: write # action-gh-release (write)
+    name: 'Create GitHub release and publish release notes'
     runs-on: ubuntu-latest
     needs: generate-releasenotes
     steps:
-      - name: Create release
-        uses: softprops/action-gh-release@master
+      - uses: softprops/action-gh-release@master
         with:
-          body: "${{ needs.generate-releasenotes.outputs.changelog }}"
+          body: '${{ needs.generate-releasenotes.outputs.changelog }}'
 
   build-and-upload:
     permissions:
-      contents: write      # attest-build-provenance (read), action-gh-release (write)
-      id-token: write      # attest-build-provenance
-      attestations: write  # attest-build-provenance
-    name: "Compile and upload artifact"
+      contents: write # attest-build-provenance (read), action-gh-release (write)
+      id-token: write # attest-build-provenance
+      attestations: write # attest-build-provenance
+    name: 'Compile and upload artifact'
     runs-on: ubuntu-latest
     needs: ["publish-release", "calculate-matrix"]
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(needs.calculate-matrix.outputs.targets) }}
-        exclude: ${{ fromJSON(inputs.skip-target) }}
+        target: '${{ fromJSON(needs.calculate-matrix.outputs.targets) }}'
+        exclude: '${{ fromJSON(inputs.skip-target) }}'
     steps:
-      - name: "Checkout"
-        uses: actions/checkout@master
-      - name: "Install rust toolchain"
+      - uses: actions/checkout@master
+      - name: 'Install rust toolchain'
         uses: dtolnay/rust-toolchain@stable
-      - name: "Install cross-compilation tool"
+      - name: 'Install rust-cross'
         env:
           RUSTFLAGS: "-C opt-level=0 -C panic=abort -C target-cpu=native"
-        run:  cargo install cross --git "https://github.com/cross-rs/cross"
-      - name: "Build for target ${{ matrix.target }}"
-        if:   "${{ !inputs.test-reproducibility }}"
+        run: cargo install cross --git 'https://github.com/cross-rs/cross'
+      - name: 'Build for target ${{ matrix.target }} without reproducibility test'
+        if: '${{ !inputs.test-reproducibility }}'
         env:
-          TARGET: "${{ matrix.target }}"
-          BINARY: "${{ inputs.binary-name }}"
-          CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
-          CROSS_RUSTFLAGS: "${{ inputs.rust-flags }}"
-        run: env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${CROSS_RUSTFLAGS}" cross build --release "--target=$TARGET"
-      - name: "Build for target ${{ matrix.target }} and check for reproducibility"
-        if:   "${{ inputs.test-reproducibility }}"
+          TARGET: '${{ matrix.target }}'
+          CARGO_TERM_VERBOSE: '${{ inputs.cargo-verbose }}'
+          RUSTFLAGS: '${{ inputs.rust-flags }}'
+        run: >
+          env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${RUSTFLAGS}"
+          cross build --release "--target=$TARGET"
+      - name: 'Build for target ${{ matrix.target }} and test for reproducibility'
+        if: '${{ inputs.test-reproducibility }}'
         env:
-          TARGET: "${{ matrix.target }}"
-          BINARY: "${{ inputs.binary-name }}"
-          CARGO_TERM_VERBOSE: "${{ inputs.cargo-verbose }}"
-          REPROTEST_VERBOSE: "${{ inputs.reprotest-verbose }}"
-          FAIL_IF_UNREPRODUCIBLE: "${{ inputs.fail-if-unreproducible }}"
-          REPROTEST_VARY: "+all,-time,-domain_host" # time causes rustc to SIGSEGV (WHY?); domain_host needs unshare
+          TARGET: '${{ matrix.target }}'
+          CARGO_TERM_VERBOSE: '${{ inputs.cargo-verbose }}'
+          REPROTEST_VERBOSE: '${{ inputs.reprotest-verbose }}'
+          FAIL_IF_UNREPRODUCIBLE: '${{ inputs.fail-if-unreproducible }}'
+          REPROTEST_VARY: '${{ inputs.reprotest-variations }}'
+          RELEASE_PATH_GLOB: 'target/${{ matrix.target }}/release/${{ inputs.binary-name }}*'
+          RUSTFLAGS: '${{ inputs.rust-flags }}'
+          CROSS_CONTAINER_OPTS: '--privileged' # fuse driver needs privileged container; not a security problem since we're docker-in-docker
           SETARCH_STUB: |
             #!/bin/sh
-            # Remove arch
-            shift
-            while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do
-              # Remove options
-              shift
-            done
+            # setarch [arch] [options] [program [argument...]]
+            # A small script that replace setarch(8) with a dumb program caller - setarch is not supported in GitHub docker
+            shift; while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do shift; done
             exec "$@"
-          REPROTEST_CMD: >
-            CARGO_TARGET_DIR=./target cargo build --release \"--target=${{ matrix.target }}\" \"--package=${{ inputs.binary-name }}\" &&
-            rm -rf \"$CARGO_TARGET_DIR/*\" &&
-            cp -vaf ./target/. \"$CARGO_TARGET_DIR/\"
-          RELEASE_PATH_GLOB: "target/${{ matrix.target }}/release/${{ inputs.binary-name }}*"
-          CROSS_RUSTFLAGS: "${{ inputs.rust-flags }}"
+          CROSS_DOCKERFILE: |
+            ARG CROSS_BASE_IMAGE
+            FROM $CROSS_BASE_IMAGE
+            RUN apt-get update >/dev/null 2>&1
+            RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1
+            COPY --chmod 555 /tmp/setarch /usr/bin/setarch
+          COMPILE_CMD: >
+            CARGO_TARGET_DIR=./target
+            cargo build
+              --release
+              \"--target=${{ matrix.target }}\"
+              \"--package=${{ inputs.binary-name }}\"
+            && rm -rf \"$CARGO_TARGET_DIR/*\"
+            && cp -vaf ./target/. \"$CARGO_TARGET_DIR/\"
         run: |
-              dockerfile="$(mktemp)"
-              echo "$SETARCH_STUB" > setarch
-              {
-                echo "ARG CROSS_BASE_IMAGE"
-                echo "FROM \$CROSS_BASE_IMAGE"
-                echo "RUN apt-get update >/dev/null 2>&1"
-                echo "RUN apt-get install --yes reprotest diffoscope >/dev/null 2>&1"
-                # Stub setarch as it doesn't work in docker
-                echo "COPY --chmod=555 setarch /usr/bin/setarch"
-                # Add user and groups to passwd database
-                echo "RUN groupadd --gid \"$(id --group)\" --non-unique \"$(id --group --name)\""
-                echo "RUN useradd --non-unique --uid \"$(id --user)\" --gid \"$(id --group)\" \"$(id --user --name)\" "
-              } >> "$dockerfile"
-              env "CARGO_TARGET_${TARGET}_RUSTFLAGS=${CROSS_RUSTFLAGS}" CROSS_BUILD_DOCKERFILE="$dockerfile" CROSS_CONTAINER_OPTS="--privileged" \
-                cross-util run "--target=$TARGET" -- \
-                  "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$REPROTEST_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE || touch NONREPRODUCIBLE"
-              if [ -f REPRODUCIBLE ]; then
-                echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
-              elif [ -f NONREPRODUCIBLE ]; then
-                echo "REPRODUCIBLE=false" >> "$GITHUB_ENV"
-                if [ "$FAIL_IF_UNREPRODUCIBLE" == "true" ]; then
-                  echo "::error ::Binary is not reproducible"
-                  exit 1
-                fi
-              else
-                echo "::error ::Failed to run reprotest"
-                exit 1
-              fi
-      - name: "Generate reproducibility report"
-        id:   reproducible-report
+          dockerfile="$(mktemp)"
+          echo "$SETARCH_STUB" > /tmp/setarch
+          echo "$CROSS_DOCKERFILE" > "$dockerfile"
+          env \
+          "CARGO_TARGET_${TARGET}_RUSTFLAGS=${RUSTFLAGS}" \
+          CROSS_BUILD_DOCKERFILE="$dockerfile" \
+            cross-util run "--target=$TARGET" -- \
+              "reprotest \"--verbosity=$REPROTEST_VERBOSE\" \"--variations=$REPROTEST_VARY\" \"$COMPILE_CMD\" \"$RELEASE_PATH_GLOB\" && touch REPRODUCIBLE"
+          if [ -f REPRODUCIBLE ]; then
+            echo "REPRODUCIBLE=true" >> "$GITHUB_ENV"
+          else
+            echo "REPRODUCIBLE=false" >> "$GITHUB_ENV"
+            if [ "$FAIL_IF_UNREPRODUCIBLE" == "true" ]; then
+              echo "::error::Binary is not reproducible"
+              exit 1
+            fi
+          fi
+      - name: 'Generate reproducibility report'
+        id: reproducible-report
         env:
-          TARGET: "${{ matrix.target }}"
-          BINARY: "${{ inputs.binary-name }}"
+          TARGET: '${{ matrix.target }}'
+          BINARY: '${{ inputs.binary-name }}'
         run: |
-              if [ "$REPRODUCIBLE" == "true" ]; then
-                echo "reproducible=✅  $BINARY is reproducible for $TARGET" >> "$GITHUB_OUTPUT"
-              elif [ "$REPRODUCIBLE" == "false" ]; then
-                echo "reproducible=❌  $BINARY is not reproducible for $TARGET" >> "$GITHUB_OUTPUT"
-              fi
-      - name: "Rename build artifact"
+          if [ "$REPRODUCIBLE" == "true" ]; then
+            echo "reproducible=✅  $BINARY is reproducible for $TARGET" >> "$GITHUB_OUTPUT"
+          elif [ "$REPRODUCIBLE" == "false" ]; then
+            echo "reproducible=❌  $BINARY is not reproducible for $TARGET" >> "$GITHUB_OUTPUT"
+          fi
+      - name: 'Rename build artifact'
         id: move-artifact
         env:
-          TARGET: "${{ matrix.target }}"
-          BINARY: "${{ inputs.binary-name }}"
-        run:  |
-          release_path_unix="target/${TARGET}/release/${BINARY}"
-          release_path_win="${release_path_unix}.exe"
-          release_path_js="${release_path_unix}.js"
-          target_path_unix="target/${BINARY}-${TARGET}"
-          target_path_win="${target_path_unix}.exe"
-          target_path_js="${target_path_unix}.js"
-          if [ -f "$release_path_unix" ]; then
-            mv "$release_path_unix" "$target_path_unix"
-            echo "TARGET_PATH=$target_path_unix" >> "$GITHUB_OUTPUT"
-          elif [ -f "$release_path_win" ]; then
-            mv "$release_path_win" "$target_path_win"
-            echo "TARGET_PATH=$target_path_win" >> "$GITHUB_OUTPUT"
-          elif [ -f "$release_path_js" ]; then
-            mv "$release_path_js" "$target_path_js"
-            echo "TARGET_PATH=$target_path_js" >> "$GITHUB_OUTPUT"
+          SRC_PATH: 'target/${{ matrix.target }}/release/${{ inputs.binary-name }}'
+          DST_PATH: 'target/${{ inputs.binary-name }}-${{ matrix.target }}'
+          FIND_NAME: '${{ inputs.binary-name }}*'
+        run: |
+          if [ -f "$SRC_PATH" ]; then
+            mv "$SRC_PATH" "$DST_PATH"
+            echo "OUTPUT_PATH=$DST_PATH" >> "$GITHUB_OUTPUT"
+          elif [ -f "${SRC_PATH}.exe" ]; then
+            mv "${SRC_PATH}.exe" "${DST_PATH}.exe"
+            echo "OUTPUT_PATH=${DST_PATH}.exe" >> "$GITHUB_OUTPUT"
+          elif [ -f "${SRC_PATH}.js" ]; then
+            mv "${SRC_PATH}.js" "${DST_PATH}.js"
+            echo "OUTPUT_PATH=${DST_PATH}.js" >> "$GITHUB_OUTPUT"
           else
-            echo "::error ::Build artifact not found"
+            echo "::error::Build artifact not found"
             echo "Possible files in target/ directory:"
-            find target -type f 2>/dev/null
+            find target/ -type f -name "$FIND_NAME" 2>/dev/null
             exit 1
           fi
-      - name: "Generate build provenance attestation"
+      - name: 'Generate build provenance attestation'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: "${{ steps.move-artifact.outputs.TARGET_PATH }}"
-      - name: "Upload binary as artifact"
+          subject-path: '${{ steps.move-artifact.outputs.OUTPUT_PATH }}'
+      - name: 'Upload binary as artifact'
         uses: softprops/action-gh-release@master
         with:
-          files: "${{ steps.move-artifact.outputs.TARGET_PATH }}"
-          body: "${{ steps.reproducible-report.outputs.reproducible }}"
+          files: '${{ steps.move-artifact.outputs.OUTPUT_PATH }}'
+          body: '${{ steps.reproducible-report.outputs.reproducible }}'
           append_body: true
