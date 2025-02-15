@@ -253,7 +253,7 @@ jobs:
               done
           MOVE_FILES: >
             find "$CARGO_TARGET_DIR" -mindepth 1 -delete;
-            find target_executables/ -print0 | xargs -0 mv -t "$CARGO_TARGET_DIR"
+            find target_executables/ -exec mv -t "$CARGO_TARGET_DIR" {} +
         run: |
           dockerfile="$(mktemp)"
           echo "$SETARCH_STUB" > setarch_stub
