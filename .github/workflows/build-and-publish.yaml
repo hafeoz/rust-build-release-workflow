@@ -297,7 +297,7 @@ jobs:
           echo "$REPROTEST_VARY" | base64 > "${env_dir}/reprotest_vary"
           echo "$EXECUTABLE_DIR" | base64 > "${env_dir}/executable_dir"
           echo "$compiler_file" | base64 > "${env_dir}/compiler_file"
-          echo "$EXECUTABLE_FILTER" > "${env_dir}/executable_filter"
+          echo "$EXECUTABLE_FILTER" | base64 > "${env_dir}/executable_filter"
 
           env CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- "bash $runner_file \"$env_dir\""
 
