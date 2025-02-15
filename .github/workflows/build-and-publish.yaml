@@ -244,8 +244,9 @@ jobs:
               if [ "${1##--uname*}" == "" ]; then
                 args+=("$1")
               else
-                echo "::warning::Ignoring setarch $1"; shift;
+                echo "::warning::Ignoring setarch $1"
               fi
+              shift;
             done
             exec /usr/bin/setarch "${args[@]}" "$@"
           CROSS_DOCKERFILE: |
