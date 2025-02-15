@@ -237,7 +237,7 @@ jobs:
           SETARCH_STUB: |
             #!/bin/bash
             # setarch [arch] [options] [program [argument...]]
-            echo "::debug::setarch called with $*"
+            echo "::notice::setarch called with $*"
             args=()
             args+=("$1")
             shift; while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do
