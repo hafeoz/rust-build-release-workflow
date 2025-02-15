@@ -239,7 +239,7 @@ jobs:
             # setarch [arch] [options] [program [argument...]]
             # A small script that replace setarch(8) with a dumb program caller - setarch is not supported in GitHub docker
             /usr/bin/setarch_old "$1"
-            shift; while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do shift; done
+            shift; while [ "${1##-*}" = "" ] && [ "$1" != "" ]; do echo "::warning::Ignoring setarch $1"; shift; done
             exec "$@"
           CROSS_DOCKERFILE: |
             ARG CROSS_BASE_IMAGE
