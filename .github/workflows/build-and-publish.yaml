@@ -18,9 +18,9 @@ on:
         type: string
         default: '.[] |
           select(
-            (.reason == ''compiler-artifact'') and
+            (.reason == "compiler-artifact") and
             (.executable != null) and
-            (.target.kind == [''bin''])
+            (.target.kind == ["bin"])
           ) | .executable'
       rust-toolchain:
         description: 'Rust toolchain to use.'
@@ -249,7 +249,7 @@ jobs:
             mkdir target_executables
             env CARGO_TARGET_DIR=./targets \
               cargo build --release "--target=${{ matrix.target }}" --message-format=json \
-              | jq -sr "${{ inputs.executable-filter }}" \
+              | jq -sr '${{ inputs.executable-filter }}' \
               | while IFS= read -r file; do
                 cp "$file" ./target_executables/
               done
