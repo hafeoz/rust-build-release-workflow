@@ -114,7 +114,7 @@ jobs:
             if [[ "$triple" =~ $REGEX ]]; then filtered="${filtered}${triple};"; fi
           done <<< "$TARGETS"
           echo -n "filtered_targets=" >> "$GITHUB_OUTPUT"
-          echo -n "${filtered%\;}" | jq -rsc 'split(";")' >> "$GITHUB_OUTPUT"
+          echo -n "${filtered%\;}" | jq -Rsc 'split(";")' >> "$GITHUB_OUTPUT"
 
   generate-releasenotes:
     name: 'Generate changelog'
