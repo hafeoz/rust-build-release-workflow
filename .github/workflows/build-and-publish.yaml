@@ -250,6 +250,7 @@ jobs:
             executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
             export PATH="$(cat "${ENV_DIR}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
+
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
               cargo build --release --locked "--target=$target"
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
@@ -262,6 +263,7 @@ jobs:
             #!/usr/bin/env bash
             set -o errexit -o nounset -o pipefail
             env_dir="$1"
+
             output_dir="$(mktemp -dp .)"
             echo "$output_dir" | base64 > "${env_dir}/output_dir"
             echo "$PATH" | base64 > "${env_dir}/path"
@@ -269,10 +271,12 @@ jobs:
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
             EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
             COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
+
             # WORKAROUND: share local toolchain with all users
             toolchain="$(dirname "$(which cargo)")"
             sudo cp -a "${toolchain}/../." /usr/local/
             sudo chmod -R ugo+rx /usr/local/
+
             env "ENV_DIR=$env_dir" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
               "--verbosity=$REPROTEST_VERBOSE" \
@@ -323,7 +327,7 @@ jobs:
           if [ "$REPRODUCIBLE" == 'true' ]; then
             echo "reproducible=✅  ${TARGET}'s binary is reproducible" >> "$GITHUB_OUTPUT"
           elif [ "$REPRODUCIBLE" == 'false' ]; then
-            echo "reproducible=❌  ${TARGET}'s binary is not reproducible" >> "$GITHUB_OUTPUT"
+            echo "reproducible=❌  ${TARGET}'s binary is NOT reproducible; check action output for diff" >> "$GITHUB_OUTPUT"
           fi
       - name: 'Rename build artifact'
         id: rename-artifact
