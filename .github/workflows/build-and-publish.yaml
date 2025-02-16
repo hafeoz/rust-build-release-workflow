@@ -283,6 +283,7 @@ jobs:
 
             output_dir="$(mktemp -dp .)"
             time_file="$(mktemp)"
+            chmod 777 "$time_file"
             echo "0" > "$time_file"
             echo "$output_dir" | base64 > "${env_dir}/output_dir"
             echo "$PATH" | base64 > "${env_dir}/path"
