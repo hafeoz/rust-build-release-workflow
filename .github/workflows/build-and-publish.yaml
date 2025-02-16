@@ -39,7 +39,7 @@ on:
                       By default all variations except time (cause rustc to SIGSEGV) and domain_host (unsupported for GitHub runner) is enabled.
                       Note user_group and domain_host is currently not supported.'
         type: string
-        default: '+all,-time,-domain_host,user_group.available+=repro1:repro1,domain_host.use_sudo=1,num_cpus.cpus=2,3,4'
+        default: '+all,-time,user_group.available+=repro1:repro1,domain_host.use_sudo=1,num_cpus.cpus=2,3,4'
       fail-if-unreproducible:
         description: 'Whether to fail the workflow if binary is unreproducible.
                       By default unreproducible binaries are warned but not failed.'
@@ -234,7 +234,7 @@ jobs:
           REPROTEST_VARY: '${{ inputs.reprotest-variations }}'
           EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
           # fuse driver needs privileged container; not a security problem since we're docker-in-docker
-          CROSS_CONTAINER_OPTS: '--privileged'
+          CROSS_CONTAINER_OPTS: '--privileged --security-opt=no-new-privileges=false --security-opt=seccomp=unconfined --security-opt=systempaths=unconfined --security-opt=label=disable'
           SUDO_STUB: |
             #!/bin/sh
             # Remove host option from sudo since cross docker doesn't like it
