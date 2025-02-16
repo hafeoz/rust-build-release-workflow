@@ -307,6 +307,8 @@ jobs:
             if [ "$FAIL_IF_UNREPRODUCIBLE" == 'true' ]; then
               echo "::error::Binary is not reproducible"
               exit 1
+            else
+              echo "::warning::Binary is not reproducible"
             fi
           fi
       - name: 'Generate reproducibility report'
