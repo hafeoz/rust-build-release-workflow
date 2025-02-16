@@ -39,7 +39,7 @@ on:
                       By default all variations except time (cause rustc to SIGSEGV) and domain_host (unsupported for GitHub runner) is enabled.
                       Note user_group and domain_host is currently not supported.'
         type: string
-        default: '+all,-time,-domain_host,user_group.available+=repro1:repro1;repro2:repro2,domain_host.use_sudo=1'
+        default: '+all,-time,-domain_host,user_group.available+=repro1:repro1,domain_host.use_sudo=1'
       fail-if-unreproducible:
         description: 'Whether to fail the workflow if binary is unreproducible.
                       By default unreproducible binaries are warned but not failed.'
@@ -246,7 +246,7 @@ jobs:
             FROM $CROSS_BASE_IMAGE
             RUN apt-get update >/dev/null 2>&1
             RUN apt-get install --yes reprotest diffoscope jq sudo >/dev/null 2>&1
-            RUN useradd -mU repro1; useradd -mU repro2
+            RUN useradd -mU repro1
             RUN echo 'ALL ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers
           COMPILER: |
             #!/usr/bin/env bash
