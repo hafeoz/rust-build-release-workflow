@@ -248,7 +248,6 @@ jobs:
             target="$(cat "${ENV_DIR}/target" | base64 -d)"
             output_dir="$(cat "${ENV_DIR}/output_dir" | base64 -d)"
             executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
-            export PATH="${PATH}:$(cat "${ENV_DIR}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
               cargo build --release "--target=$target"
@@ -272,8 +271,10 @@ jobs:
             toolchain="$(dirname "$(which cargo)")"
             sudo cp -a "${toolchain}/../." /usr/local/
             sudo chmod -R ugo+rx /usr/local/
-            echo "$PATH" | base64 > "${env_dir}/path"
-            env "ENV_DIR=$env_dir" reprotest \
+            rustup_home="$(mktemp -d)"
+            sudo cp -a "${toolchain}/../../../." "${rustup_home}/"
+            sudo chmod -R ugo+rx "${rustup_home}"
+            env "ENV_DIR=$env_dir" "RUSTUP_HOME=$rustup_home" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
               "--verbosity=$REPROTEST_VERBOSE" \
               "--variations=$REPROTEST_VARY" \
