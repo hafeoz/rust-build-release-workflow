@@ -305,8 +305,11 @@ jobs:
               "--verbosity=$REPROTEST_VERBOSE" \
               "--variations=$REPROTEST_VARY" \
               "bash $COMPILER_FILE" "${output_dir}/*" \
-              && touch "${env_dir}/REPRODUCIBLE" \
-              ; sudo date -Ins -s "$(date -Ins -d "$(cat "${env_dir}/timechange") seconds ago")"
+              && touch "${env_dir}/REPRODUCIBLE" || true
+
+            secs="$(cat "${env_dir}/timechange")"
+            echo "Going back in time for $secs seconds"
+            sudo date -Ins -s "$(date -Ins -d "-$secs seconds")"
         run: |
           dockerfile="$(mktemp)"
           compiler_file="$(mktemp -p .)"
