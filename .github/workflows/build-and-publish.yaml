@@ -248,7 +248,7 @@ jobs:
             target="$(cat "${ENV_DIR}/target" | base64 -d)"
             output_dir="$(cat "${ENV_DIR}/output_dir" | base64 -d)"
             executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
-            export PATH="$(cat "${env_dir}/path" | base64 -d)"
+            export PATH="$(cat "${ENV_DIR}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
               cargo build --release "--target=$target"
