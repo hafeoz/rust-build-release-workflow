@@ -300,7 +300,7 @@ jobs:
           echo "$EXECUTABLE_FILTER" | base64 > "${env_dir}/executable_filter"
 
           # Run cross metadata before compiling to install toolchain
-          env CROSS_BUILD_DOCKERFILE="$dockerfile" cross metadata "--target=$TARGET" --no-deps
+          env CROSS_BUILD_DOCKERFILE="$dockerfile" cross metadata --frozen "--target=$TARGET" --no-deps --format-version 1
           env CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- "bash $runner_file \"$env_dir\""
           find "$EXECUTABLE_DIR" \( -name "*.diffoscope.out" -or -name "SHA256SUMS" \) -and -type f -delete
 
