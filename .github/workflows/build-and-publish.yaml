@@ -218,8 +218,8 @@ jobs:
           EXECUTABLE_FILTER: '${{ inputs.executable-filter }}'
           EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
         run: |
-          cross build --release "--target=$TARGET"
-          cross build --release "--target=$TARGET" --message-format=json | jq -sr "$EXECUTABLE_FILTER" | while IFS= read -r file; do
+          cross build --release --locked "--target=$TARGET"
+          cross build --release --locked "--target=$TARGET" --message-format=json | jq -sr "$EXECUTABLE_FILTER" | while IFS= read -r file; do
             cp -v "$file" "${EXECUTABLE_DIR}/"
           done
       - name: 'Build for target ${{ matrix.target }} and test for reproducibility'
@@ -251,9 +251,9 @@ jobs:
             export PATH="$(cat "${ENV_DIR}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
-              cargo build --release "--target=$target"
+              cargo build --release --locked "--target=$target"
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
-              cargo build --release "--target=$target" --message-format=json \
+              cargo build --release --locked "--target=$target" --message-format=json \
               | jq -sr "$executable_filter" \
               | while IFS= read -r file; do
                 cp "$file" "${output_dir}/"
