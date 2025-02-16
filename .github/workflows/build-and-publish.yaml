@@ -266,6 +266,7 @@ jobs:
               sudo date -Ins -s "$(date -Ins -d "$secs seconds")"
               echo "Time travelled! Current time: $(date)"
               echo "$(( timechange + secs ))" > "${ENV_DIR}/timechange"
+              echo "DEBUG: $(cat ${ENV_DIR}/timechange)"
             fi
 
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
