@@ -36,8 +36,7 @@ on:
         default: true
       reprotest-variations:
         description: 'Variations to test for reproducibility, as comma-separated of strings.
-                      By default all variations except time (cause rustc to SIGSEGV) and domain_host (unsupported for GitHub runner) is enabled.
-                      Note user_group and domain_host is currently not supported.'
+                      By default all variations except time (cause rustc to SIGSEGV) is enabled.'
         type: string
         default: '+all,-time,user_group.available+=repro1:repro1,domain_host.use_sudo=1'
       fail-if-unreproducible:
