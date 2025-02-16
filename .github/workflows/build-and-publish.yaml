@@ -39,6 +39,10 @@ on:
                       By default all variations except time (cause rustc to SIGSEGV) is enabled.'
         type: string
         default: '+all,-time,user_group.available+=repro1:repro1,domain_host.use_sudo=1'
+      reprotest-vary-time:
+        description: 'Vary time using date(1) when testing for reproducibility.'
+        type: boolean
+        default: true
       fail-if-unreproducible:
         description: 'Whether to fail the workflow if binary is unreproducible.
                       By default unreproducible binaries are warned but not failed.'
@@ -231,6 +235,7 @@ jobs:
           REPROTEST_VERBOSE: '${{ inputs.reprotest-verbose }}'
           FAIL_IF_UNREPRODUCIBLE: '${{ inputs.fail-if-unreproducible }}'
           REPROTEST_VARY: '${{ inputs.reprotest-variations }}'
+          VARY_TIME: '${{ inputs.reprotest-vary-time }}'
           EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
           # fuse driver needs privileged container; not a security problem since we're docker-in-docker
           # systempaths=unconfined is required for unshare to work
@@ -248,13 +253,23 @@ jobs:
             target="$(cat "${ENV_DIR}/target" | base64 -d)"
             output_dir="$(cat "${ENV_DIR}/output_dir" | base64 -d)"
             executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
+            vary_time="$(cat "${ENV_DIR}"/vary_time | base64 -d)"
             export PATH="$(cat "${ENV_DIR}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
 
+            # Advance 398 days and random seconds into future to vary time
+            if [ "$vary_time" == "true" ]; then
+              min_secs="$(( 60 * 60 * 24 * 398 ))"
+              max_secs="$(( min_secs + 60 * 60 * 24 ))"
+              secs="$(shuf -i "${min_secs}-${max_secs}" -n 1)"
+              date -Ins -s "$(date -Ins -d "$secs seconds")"
+              echo "Time travelled! Current time: $(date)"
+            fi
+
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
-              cargo build --release --locked "--target=$target"
+              cargo build --release --frozen "--target=$target"
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
-              cargo build --release --locked "--target=$target" --message-format=json \
+              cargo build --release --frozen "--target=$target" --message-format=json \
               | jq -sr "$executable_filter" \
               | while IFS= read -r file; do
                 cp "$file" "${output_dir}/"
@@ -271,11 +286,16 @@ jobs:
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
             EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
             COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
+            target="$(cat "${env_dir}/target" | base64 -d)"
 
             # WORKAROUND: share local toolchain with all users
             toolchain="$(dirname "$(which cargo)")"
             sudo cp -a "${toolchain}/../." /usr/local/
             sudo chmod -R ugo+rx /usr/local/
+
+            # Fetch dependencies from network to allow time variation without network chaos
+            cargo fetch --locked "--target=$target"
+            sudo -g repro1 -u repro1 -- cargo fetch --locked "--target=$target"
 
             env "ENV_DIR=$env_dir" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
@@ -302,6 +322,7 @@ jobs:
           echo "$EXECUTABLE_DIR" | base64 > "${env_dir}/executable_dir"
           echo "$compiler_file" | base64 > "${env_dir}/compiler_file"
           echo "$EXECUTABLE_FILTER" | base64 > "${env_dir}/executable_filter"
+          echo "$VARY_TIME" | base64 > "${env_dir}/vary_time"
 
           # Run cross metadata before compiling to install toolchain
           env CROSS_BUILD_DOCKERFILE="$dockerfile" cross metadata --frozen "--target=$TARGET" --no-deps --format-version 1
