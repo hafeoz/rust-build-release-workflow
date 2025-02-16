@@ -306,7 +306,7 @@ jobs:
               "--verbosity=$REPROTEST_VERBOSE" \
               "--variations=$REPROTEST_VARY" \
               "bash $COMPILER_FILE" "${output_dir}/*" \
-              && touch "${env_dir}/REPRODUCIBLE" |
+              && touch "${env_dir}/REPRODUCIBLE" || true
 
             sudo date -Ins -s "$(date -Ins -d "-$(cat "$time_file") seconds")"
         run: |
