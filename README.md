@@ -1,6 +1,7 @@
 # Build and Release Rust program using GitHub action
 
 A GitHub workflow that builds rust program on multiple platforms and publish them as release.
+[Artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) are generated to establish provenance for generated artifacts, and (optionally) [reprotest](https://salsa.debian.org/reproducible-builds/reprotest) can be used to ensure [reproducibility](https://reproducible-builds.org/).
 
 ## Example workflow
 
@@ -36,11 +37,13 @@ jobs:
 | reprotest-verbose      | number  | Level of verbosity (0~2) for reprotest.                                                                                                                                                                                                                       | 1                                    |
 | executable-filter      |         |                                                                                                                                                                                                                                                               |                                      |
 
-## Caveat and security considerations
+## Caveats and security considerations
 
 - Not all `reprotest` variations are enabled by default: `time` cause rustc to SIGSEGV and is likely to interfere with dependency fetching.
 
 - `Cargo.lock` is used to download dependencies from network instead of vendored, which may cause non-determinism and possible supply chain security issue.
+
+- Few third-party actions are used: `dtolnay/rust-toolchain` (**not pinned**), `softprops/action-gh-release` (SHA pinned). The inline script also install programs from various sources: `cocogitto` ([cocogitto/cocogitto](https://github.com/cocogitto/cocogitto), SHA pinned), `cross` ([cross-rs/cross](https://github.com/cross-rs/cross), **not pinned**), `reprotest` `diffoscope` `jq` `sudo` ([ubuntu](https://launchpad.net/ubuntu)). Consider the trustworthiness of these sources before using.
 
 ## License
 
