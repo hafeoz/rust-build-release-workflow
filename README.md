@@ -31,7 +31,8 @@ jobs:
 | rust-toolchain         | string  | Rust toolchain to use.                                                                                                                                                                                                                                        | stable                               |
 | rust-flags             | string  | RUSTFLAGS environment variable used when compilation.                                                                                                                                                                                                         |                                      |
 | test-reproducibility   | boolean | Whether to check if binary is reproducible.                                                                                                                                                                                                                   | true                                 |
-| reprotest-variations   | string  | Variations to test for reproducibility, as comma-separated of strings.                                                                      | +all,-time                           |
+| reprotest-variations   | string  | Variations to test for reproducibility, as comma-separated of strings.                                                                                                                                                                                        | +all,-time                           |
+| reprotest-vary-time    | boolean | Vary time using date(1) when testing for reproducibility.                                                                                                                                                                                                     | true                                 |
 | fail-if-unreproducible | boolean | Whether to fail the workflow if binary is unreproducible. By default unreproducible binaries are warned but not failed.                                                                                                                                       | false                                |
 | cargo-verbose          | boolean | Whether to display extra detailed messages for Cargo.                                                                                                                                                                                                         | false                                |
 | reprotest-verbose      | number  | Level of verbosity (0-2) for reprotest.                                                                                                                                                                                                                       | 1                                    |
@@ -39,7 +40,7 @@ jobs:
 
 ## Caveats and security considerations
 
-- Not all `reprotest` variations are enabled by default: `time` cause rustc to SIGSEGV and is likely to interfere with dependency fetching.
+- Not all `reprotest` variations are enabled by default: `time` cause rustc to SIGSEGV and is likely to interfere with dependency fetching. [`date(1)`](https://manpages.ubuntu.com/manpages/xenial/man1/date.1.html) is used instead to mutate time and is controlled by `reprotest-vary-time` option.
 
 - `Cargo.lock` is used to download dependencies from network instead of vendored, which may cause non-determinism and possible supply chain security issue.
 
