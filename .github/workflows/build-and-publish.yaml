@@ -25,11 +25,11 @@ on:
       rust-toolchain:
         description: 'Rust toolchain to use.'
         type: string
-        default: 'nightly'
+        default: 'stable'
       rust-flags:
         description: 'RUSTFLAGS environment variable used when compilation.'
         type: string
-        default: '-Z remap-cwd-prefix=.'
+        default: ''
       test-reproducibility:
         description: 'Whether to check if binary is reproducible.'
         type: boolean
@@ -39,7 +39,7 @@ on:
                       By default all variations except time (cause rustc to SIGSEGV) and domain_host (unsupported for GitHub runner) is enabled.
                       Note user_group and domain_host is currently not supported.'
         type: string
-        default: '+all,-time,user_group.available+=repro1:repro1,domain_host.use_sudo=1,num_cpus.cpus=2,3,4'
+        default: '+all,-time,user_group.available+=repro1:repro1,domain_host.use_sudo=1,num_cpus.cpus=2;3;4'
       fail-if-unreproducible:
         description: 'Whether to fail the workflow if binary is unreproducible.
                       By default unreproducible binaries are warned but not failed.'
