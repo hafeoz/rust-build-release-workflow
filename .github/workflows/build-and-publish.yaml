@@ -240,7 +240,7 @@ jobs:
             # Remove host option from sudo since cross docker doesn't like it
             if [ "$1" = '-h' ]; then shift 2; fi
             echo "Running sudo $*"
-            exec /usr/bin/sudo -h '127.0.0.1' "$@"
+            exec /usr/bin/sudo -h localhost "$@"
           CROSS_DOCKERFILE: |
             ARG CROSS_BASE_IMAGE
             FROM $CROSS_BASE_IMAGE
@@ -274,6 +274,10 @@ jobs:
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
             EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
             COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
+            # WORKAROUND: allow sudo to resolve localhost
+            echo 'builder' | sudo tee /etc/hostname
+            echo '127.0.0.1 localhost localhost.localdomain builder' | sudo tee /etc/hosts
+            echo 'nameserver 8.8.8.8' | sudo tee /etc/resolv.conf
             # WORKAROUND: share local toolchain with all users
             toolchain="$(dirname "$(which cargo)")"
             sudo cp -a "${toolchain}/../." /usr/local/
