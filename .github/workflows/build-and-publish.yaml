@@ -248,6 +248,7 @@ jobs:
             target="$(cat "${ENV_DIR}/target" | base64 -d)"
             output_dir="$(cat "${ENV_DIR}/output_dir" | base64 -d)"
             executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
+            export PATH="$(cat "${env_dir}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
               cargo build --release "--target=$target"
@@ -263,6 +264,7 @@ jobs:
             env_dir="$1"
             output_dir="$(mktemp -dp .)"
             echo "$output_dir" | base64 > "${env_dir}/output_dir"
+            echo "$PATH" | base64 > "${env_dir}/path"
             REPROTEST_VERBOSE="$(cat "${env_dir}/reprotest_verbose" | base64 -d)"
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
             EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
