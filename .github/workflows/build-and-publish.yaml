@@ -270,13 +270,8 @@ jobs:
             COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
             # WORKAROUND: share local toolchain with all users
             toolchain="$(dirname "$(which cargo)")"
-            sudo cp -va "${toolchain}/../." /usr/local/
+            sudo cp -a "${toolchain}/../." /usr/local/
             sudo chmod -R ugo+rx /usr/local/
-            # WORKAROUND: resolve localhost for sudo
-            {
-              echo '127.0.0.1 localhost'
-              echo '::1 localhost'
-            } | sudo tee /etc/hosts
             echo "$PATH" | base64 > "${env_dir}/path"
             env "ENV_DIR=$env_dir" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
