@@ -240,7 +240,7 @@ jobs:
             # Remove host option from sudo since cross docker doesn't like it
             if [ "$1" = '-h' ]; then shift 2; fi
             echo "Running sudo $*"
-            exec /usr/bin/sudo "$@"
+            exec /usr/bin/sudo -h '127.0.0.1' "$@"
           CROSS_DOCKERFILE: |
             ARG CROSS_BASE_IMAGE
             FROM $CROSS_BASE_IMAGE
