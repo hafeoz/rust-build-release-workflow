@@ -248,6 +248,7 @@ jobs:
             target="$(cat "${ENV_DIR}/target" | base64 -d)"
             output_dir="$(cat "${ENV_DIR}/output_dir" | base64 -d)"
             executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
+            export PATH="${PATH}:$(cat "${ENV_DIR}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
               cargo build --release "--target=$target"
@@ -267,6 +268,9 @@ jobs:
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
             EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
             COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
+            # WORKAROUND: expose local installation of cargo to allow user variation
+            chmod -R go=u "$HOME"
+            echo "$PATH" | base64 > "${env_dir}/path"
             env "ENV_DIR=$env_dir" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
               "--verbosity=$REPROTEST_VERBOSE" \
