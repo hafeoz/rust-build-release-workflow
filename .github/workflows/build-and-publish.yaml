@@ -39,7 +39,7 @@ on:
                       By default all variations except time (cause rustc to SIGSEGV) and domain_host (unsupported for GitHub runner) is enabled.
                       Note user_group and domain_host is currently not supported.'
         type: string
-        default: '+all,-time,-domain_host'
+        default: '+all,-time,-domain_host,user_group.available+=repro:repro,domain_host.use_sudo=1'
       fail-if-unreproducible:
         description: 'Whether to fail the workflow if binary is unreproducible.
                       By default unreproducible binaries are warned but not failed.'
@@ -233,12 +233,15 @@ jobs:
           FAIL_IF_UNREPRODUCIBLE: '${{ inputs.fail-if-unreproducible }}'
           REPROTEST_VARY: '${{ inputs.reprotest-variations }}'
           EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
-          CROSS_CONTAINER_OPTS: '--privileged' # fuse driver needs privileged container; not a security problem since we're docker-in-docker
+          # fuse driver needs privileged container; not a security problem since we're docker-in-docker
+          CROSS_CONTAINER_OPTS: '--privileged --add-host localhost:127.0.0.1'
           CROSS_DOCKERFILE: |
             ARG CROSS_BASE_IMAGE
             FROM $CROSS_BASE_IMAGE
             RUN apt-get update >/dev/null 2>&1
-            RUN apt-get install --yes reprotest diffoscope jq >/dev/null 2>&1
+            RUN apt-get install --yes reprotest diffoscope jq sudo >/dev/null 2>&1
+            RUN useradd -mUG fuse,sudo repro
+            RUN echo 'ALL ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers
           COMPILER: |
             #!/usr/bin/env bash
             set -o errexit -o nounset -o pipefail
