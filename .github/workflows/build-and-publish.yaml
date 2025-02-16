@@ -264,10 +264,8 @@ jobs:
               secs="$(shuf -i "${min_secs}-${max_secs}" -n 1)"
               sudo date -Ins -s "$(date -Ins -d "$secs seconds")"
               echo "Time travelled! Current time: $(date)"
-              prev_time_change="$(cat "${ENV_DIR}/timechange" | base64 -d)"
-              total_time_change="$(( prev_time_change + secs ))"
-              echo "$total_time_change" | base64 > "${ENV_DIR}/timechange"
-              echo "Total time travelled: $total_time_change seconds"
+              prev_time_change="$(cat "$TIME_FILE")"
+              echo "$(( prev_time_change + secs ))" > "$TIME_FILE"
             fi
 
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
@@ -284,9 +282,10 @@ jobs:
             env_dir="$1"
 
             output_dir="$(mktemp -dp .)"
+            time_file="$(mktemp)"
+            echo "0" > "$time_file"
             echo "$output_dir" | base64 > "${env_dir}/output_dir"
             echo "$PATH" | base64 > "${env_dir}/path"
-            echo "0" | base64 > "${env_dir}/timechange"
             REPROTEST_VERBOSE="$(cat "${env_dir}/reprotest_verbose" | base64 -d)"
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
             EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
@@ -302,16 +301,14 @@ jobs:
             cargo fetch --locked "--target=$target"
             sudo -g repro1 -u repro1 -- cargo fetch --locked "--target=$target"
 
-            env "ENV_DIR=$env_dir" reprotest \
+            env "ENV_DIR=$env_dir" "TIME_FILE=$time_file" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
               "--verbosity=$REPROTEST_VERBOSE" \
               "--variations=$REPROTEST_VARY" \
               "bash $COMPILER_FILE" "${output_dir}/*" \
-              && touch "${env_dir}/REPRODUCIBLE" || true
+              && touch "${env_dir}/REPRODUCIBLE" |
 
-            secs="$(cat "${env_dir}/timechange")"
-            echo "Going back in time for $secs seconds"
-            sudo date -Ins -s "$(date -Ins -d "-$secs seconds")"
+            sudo date -Ins -s "$(date -Ins -d "-$(cat "$time_file") seconds")"
         run: |
           dockerfile="$(mktemp)"
           compiler_file="$(mktemp -p .)"
