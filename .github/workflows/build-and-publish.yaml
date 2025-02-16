@@ -271,10 +271,7 @@ jobs:
             toolchain="$(dirname "$(which cargo)")"
             sudo cp -a "${toolchain}/../." /usr/local/
             sudo chmod -R ugo+rx /usr/local/
-            rustup_home="$(mktemp -d)"
-            sudo cp -av "${toolchain}/../../../." "${rustup_home}/"
-            sudo chmod -R ugo+rx "${rustup_home}"
-            env "ENV_DIR=$env_dir" "RUSTUP_HOME=$rustup_home" reprotest \
+            env "ENV_DIR=$env_dir" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
               "--verbosity=$REPROTEST_VERBOSE" \
               "--variations=$REPROTEST_VARY" \
@@ -300,6 +297,7 @@ jobs:
           echo "$compiler_file" | base64 > "${env_dir}/compiler_file"
           echo "$EXECUTABLE_FILTER" | base64 > "${env_dir}/executable_filter"
 
+          rustup target add "$TARGET"
           env CROSS_BUILD_DOCKERFILE="$dockerfile" cross-util run "--target=$TARGET" -- "bash $runner_file \"$env_dir\""
           find "$EXECUTABLE_DIR" \( -name "*.diffoscope.out" -or -name "SHA256SUMS" \) -and -type f -delete
 
