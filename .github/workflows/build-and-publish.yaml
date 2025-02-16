@@ -268,8 +268,10 @@ jobs:
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
             EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
             COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
-            # WORKAROUND: expose local installation of cargo to allow user variation
-            chmod -R go=u "$HOME"
+            # WORKAROUND: share local toolchain with all users
+            toolchain="$(dirname "$(which cargo)")"
+            sudo cp -va "${toolchain}/." /usr/local/bin
+            sudo chmod -R ugo+rx /usr/local/bin
             # WORKAROUND: resolve localhost for sudo
             {
               echo '127.0.0.1 localhost'
