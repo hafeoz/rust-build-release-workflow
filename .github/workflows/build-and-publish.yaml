@@ -254,7 +254,6 @@ jobs:
             output_dir="$(cat "${ENV_DIR}/output_dir" | base64 -d)"
             executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
             vary_time="$(cat "${ENV_DIR}/vary_time" | base64 -d)"
-            timechange="$(cat "${ENV_DIR}/timechange")"
             export PATH="$(cat "${ENV_DIR}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
 
@@ -265,8 +264,10 @@ jobs:
               secs="$(shuf -i "${min_secs}-${max_secs}" -n 1)"
               sudo date -Ins -s "$(date -Ins -d "$secs seconds")"
               echo "Time travelled! Current time: $(date)"
-              echo "$(( timechange + secs ))" > "${ENV_DIR}/timechange"
-              echo "DEBUG: $(cat ${ENV_DIR}/timechange)"
+              prev_time_change="$(cat "${ENV_DIR}/timechange" | base64 -d)"
+              total_time_change="$(( prev_time_change + secs ))"
+              echo "$total_time_change" | base64 > "${ENV_DIR}/timechange"
+              echo "Total time travelled: $total_time_change seconds"
             fi
 
             env "CARGO_TARGET_DIR=$tmp_output_dir" \
@@ -285,7 +286,7 @@ jobs:
             output_dir="$(mktemp -dp .)"
             echo "$output_dir" | base64 > "${env_dir}/output_dir"
             echo "$PATH" | base64 > "${env_dir}/path"
-            echo "0" > "${env_dir}/timechange"
+            echo "0" | base64 > "${env_dir}/timechange"
             REPROTEST_VERBOSE="$(cat "${env_dir}/reprotest_verbose" | base64 -d)"
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
             EXECUTABLE_DIR="$(cat "${env_dir}/executable_dir" | base64 -d)"
