@@ -234,7 +234,7 @@ jobs:
           REPROTEST_VARY: '${{ inputs.reprotest-variations }}'
           EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
           # fuse driver needs privileged container; not a security problem since we're docker-in-docker
-          CROSS_CONTAINER_OPTS: '--privileged --add-host localhost:127.0.0.1'
+          CROSS_CONTAINER_OPTS: '--privileged'
           CROSS_DOCKERFILE: |
             ARG CROSS_BASE_IMAGE
             FROM $CROSS_BASE_IMAGE
@@ -270,6 +270,11 @@ jobs:
             COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
             # WORKAROUND: expose local installation of cargo to allow user variation
             chmod -R go=u "$HOME"
+            # WORKAROUND: resolve localhost for sudo
+            {
+              echo '127.0.0.1 localhost'
+              echo '::1 localhost'
+            } | sudo tee /etc/hosts
             echo "$PATH" | base64 > "${env_dir}/path"
             env "ENV_DIR=$env_dir" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
