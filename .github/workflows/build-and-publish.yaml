@@ -334,7 +334,7 @@ jobs:
           find "$SRC_DIR" -type f -exec mv -v '{}' "{}-$TARGET" \;
           dst_dir="$(mktemp -dp "$(pwd)")"
           echo "EXECUTABLE_DIR=${dst_dir}" >> "$GITHUB_OUTPUT"
-          find "$SRC_DIR" -type f -exec mv -vnt "$dst_dir" '{}' +
+          find "$SRC_DIR" -type f -exec mv -vft "$dst_dir" '{}' \;
       - name: 'Generate build provenance attestation'
         uses: actions/attest-build-provenance@v2
         with:
