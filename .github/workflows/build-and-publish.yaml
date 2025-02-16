@@ -324,17 +324,22 @@ jobs:
             echo "reproducible=❌  ${TARGET}'s binary is not reproducible" >> "$GITHUB_OUTPUT"
           fi
       - name: 'Rename build artifact'
+        id: rename-artifact
         env:
           TARGET: '${{ matrix.target }}'
-          EXECUTABLE_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
-        run: find "$EXECUTABLE_DIR" -type f -exec mv -v '{}' "{}-$TARGET" \;
+          SRC_DIR: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}'
+        run: |
+          find "$SRC_DIR" -type f -exec mv -v '{}' "{}-$TARGET" \;
+          dst_dir="$(mktemp -dp "$(pwd)")"
+          echo "EXECUTABLE_DIR=${dst_dir}" >> "$GITHUB_OUTPUT"
+          find "$SRC_DIR" -type f -exec mv -vtf "$dst_dir" '{}' +
       - name: 'Generate build provenance attestation'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}/**'
+          subject-path: '${{ steps.rename-artifact.outputs.EXECUTABLE_DIR }}/**'
       - name: 'Upload binary as artifact'
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
         with:
-          files: '${{ steps.mktemp-executable.outputs.EXECUTABLE_DIR }}/**'
+          files: '${{ steps.rename-artifact.outputs.EXECUTABLE_DIR }}/**'
           body: '${{ steps.reproducible-report.outputs.reproducible }}'
           append_body: true
