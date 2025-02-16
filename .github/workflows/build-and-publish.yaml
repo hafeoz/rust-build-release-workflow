@@ -272,7 +272,7 @@ jobs:
             sudo cp -a "${toolchain}/../." /usr/local/
             sudo chmod -R ugo+rx /usr/local/
             rustup_home="$(mktemp -d)"
-            sudo cp -a "${toolchain}/../../../." "${rustup_home}/"
+            sudo cp -av "${toolchain}/../../../." "${rustup_home}/"
             sudo chmod -R ugo+rx "${rustup_home}"
             env "ENV_DIR=$env_dir" "RUSTUP_HOME=$rustup_home" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
