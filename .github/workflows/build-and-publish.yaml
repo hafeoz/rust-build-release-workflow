@@ -206,6 +206,10 @@ jobs:
           TARGET: '${{ matrix.target }}'
           RUSTFLAGS: '${{ inputs.rust-flags }}'
         run: |
+          if [[ "$TARGET" =~ ^([^-]+)-pc-windows(-([^-]+))?$ ]]; then
+            RUSTFLAGS="-C link-arg=-Wl,--no-insert-timestamp ${RUSTFLAGS}"
+            echo "::notice::Prepending RUSTFLAGS to ensure reproducibility: $RUSTFLAGS"
+          fi
           {
             echo "CARGO_TARGET_$(echo "$TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_' )_RUSTFLAGS<<EOF"
             echo "${RUSTFLAGS/EOF/}"
