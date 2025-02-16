@@ -270,8 +270,8 @@ jobs:
             COMPILER_FILE="$(cat "${env_dir}/compiler_file" | base64 -d)"
             # WORKAROUND: share local toolchain with all users
             toolchain="$(dirname "$(which cargo)")"
-            sudo cp -va "${toolchain}/." /usr/local/bin
-            sudo chmod -R ugo+rx /usr/local/bin
+            sudo cp -va "${toolchain}/../." /usr/local/
+            sudo chmod -R ugo+rx /usr/local/
             # WORKAROUND: resolve localhost for sudo
             {
               echo '127.0.0.1 localhost'
