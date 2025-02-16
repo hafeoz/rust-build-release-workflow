@@ -262,7 +262,7 @@ jobs:
               min_secs="$(( 60 * 60 * 24 * 398 ))"
               max_secs="$(( min_secs + 60 * 60 * 24 ))"
               secs="$(shuf -i "${min_secs}-${max_secs}" -n 1)"
-              date -Ins -s "$(date -Ins -d "$secs seconds")"
+              sudo date -Ins -s "$(date -Ins -d "$secs seconds")"
               echo "Time travelled! Current time: $(date)"
             fi
 
