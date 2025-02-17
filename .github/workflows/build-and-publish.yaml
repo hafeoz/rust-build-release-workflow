@@ -376,14 +376,19 @@ jobs:
           TARGET: '${{ matrix.target }}'
           DIR: '${{ steps.rename-artifact.outputs.EXECUTABLE_DIR }}'
         run: |
-          find "$DIR" -type f -print0 | while IFS= read -r -d $'\0' file; do
-            checksum="$(sha512sum "$file" | cut -d" " -f1)"
-            if [ "$REPRODUCIBLE" == 'true' ]; then
-              echo "| $file | ✅ | $checksum |" >> "$GITHUB_OUTPUT"
-            elif [ "$REPRODUCIBLE" == 'false' ]; then
-              echo "| $file | ❌ (check action output for target $TARGET for info) | $checksum |" >> "$GITHUB_OUTPUT"
-            fi
-          done
+          {
+            echo 'reproducible<<EOF'
+            find "$DIR" -type f -print0 | while IFS= read -r -d $'\0' file; do
+              checksum="$(sha512sum "$file" | cut -d" " -f1)"
+              file="${file/EOF/}"
+              if [ "$REPRODUCIBLE" == 'true' ]; then
+                echo "| $file | ✅ | $checksum |"
+              elif [ "$REPRODUCIBLE" == 'false' ]; then
+                echo "| $file | ❌ (check action output for target $TARGET for info) | $checksum |"
+              fi
+              echo EOF
+            done
+          } >> "$GITHUB_OUTPUT"
       - name: 'Generate build provenance attestation'
         uses: actions/attest-build-provenance@v2
         with:
