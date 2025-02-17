@@ -173,7 +173,7 @@ jobs:
             if [ -f 'RELEASE_NOTES.pre.md' ]; then print_strip_eof 'RELEASE_NOTES.pre.md'; fi
             echo "${changelog/EOF/}"
             if [ -f 'RELEASE_NOTES.md' ]; then print_strip_eof 'RELEASE_NOTES.md'; fi
-            echo '| Binary name | Reproducible? | sha512sum |'
+            echo '| Binary name | Reproducible? | sha256sum |'
             echo '|---|---|---|'
 
             echo EOF
@@ -379,8 +379,9 @@ jobs:
           {
             echo 'reproducible<<EOF'
             find "$DIR" -type f -print0 | while IFS= read -r -d $'\0' file; do
-              checksum="$(sha256sum "$file" | cut -d" " -f1)"
+              checksum="$(sha256sum -- "$file" | cut -d" " -f1)"
               file="${file/EOF/}"
+              file="$(basename -- "$file")"
               if [ "$REPRODUCIBLE" == 'true' ]; then
                 echo "| $file | ✅ | $checksum |"
               elif [ "$REPRODUCIBLE" == 'false' ]; then
