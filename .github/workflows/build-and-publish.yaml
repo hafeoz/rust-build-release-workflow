@@ -379,7 +379,7 @@ jobs:
           {
             echo 'reproducible<<EOF'
             find "$DIR" -type f -print0 | while IFS= read -r -d $'\0' file; do
-              checksum="$(sha512sum "$file" | cut -d" " -f1)"
+              checksum="$(sha256sum "$file" | cut -d" " -f1)"
               file="${file/EOF/}"
               if [ "$REPRODUCIBLE" == 'true' ]; then
                 echo "| $file | ✅ | $checksum |"
