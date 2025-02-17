@@ -173,6 +173,8 @@ jobs:
             if [ -f 'RELEASE_NOTES.pre.md' ]; then print_strip_eof 'RELEASE_NOTES.pre.md'; fi
             echo "${changelog/EOF/}"
             if [ -f 'RELEASE_NOTES.md' ]; then print_strip_eof 'RELEASE_NOTES.md'; fi
+            echo '| Binary name | Reproducible? | sha512sum |'
+            echo '|---|---|---|'
 
             echo EOF
           } >> "$GITHUB_OUTPUT"
@@ -358,16 +360,6 @@ jobs:
               echo "::warning::Binary is not reproducible"
             fi
           fi
-      - name: 'Generate reproducibility report'
-        id: reproducible-report
-        env:
-          TARGET: '${{ matrix.target }}'
-        run: |
-          if [ "$REPRODUCIBLE" == 'true' ]; then
-            echo "reproducible=✅  ${TARGET}'s binary is reproducible" >> "$GITHUB_OUTPUT"
-          elif [ "$REPRODUCIBLE" == 'false' ]; then
-            echo "reproducible=❌  ${TARGET}'s binary is NOT reproducible; check action output for diff" >> "$GITHUB_OUTPUT"
-          fi
       - name: 'Rename build artifact'
         id: rename-artifact
         env:
@@ -378,6 +370,20 @@ jobs:
           dst_dir="$(mktemp -dp "$(pwd)")"
           echo "EXECUTABLE_DIR=${dst_dir}" >> "$GITHUB_OUTPUT"
           find "$SRC_DIR" -type f -exec mv -vft "$dst_dir" '{}' \;
+      - name: 'Generate reproducibility report'
+        id: reproducible-report
+        env:
+          TARGET: '${{ matrix.target }}'
+          DIR: '${{ steps.rename-artifact.outputs.EXECUTABLE_DIR }}'
+        run: |
+          find "$DIR" -type f -print0 | while IFS= read -r -d $'\0' file; do
+            checksum="$(sha512sum "$file" | cut -d -f1)"
+            if [ "$REPRODUCIBLE" == 'true' ]; then
+              echo "| $file | ✅ | $checksum |" >> "$GITHUB_OUTPUT"
+            elif [ "$REPRODUCIBLE" == 'false' ]; then
+              echo "| $file | ❌ (check action output for target $TARGET for info) | $checksum |" >> "$GITHUB_OUTPUT"
+            fi
+          done
       - name: 'Generate build provenance attestation'
         uses: actions/attest-build-provenance@v2
         with:
