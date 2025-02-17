@@ -111,26 +111,33 @@ jobs:
         # x86_64-pc-solaris                 # 64-bit x86 Solaris 11.4
     outputs:
       targets: '${{ steps.filter.outputs.filtered_targets }}'
+      blacklist: '${{ steps.blacklist.outputs.blacklist_targets }}'
     steps:
       - name: 'Filter targets'
         id: filter
         env:
           REGEX: '${{ inputs.target-regex }}'
-          BLACKLIST: '${{ inputs.skip-target }}'
         run: |
-          BLACKLIST=",${BLACKLIST},"
           filtered=""
           while read -r triple; do
             # Trim comments
             triple="${triple%%\#*}"
             # Trim whitespaces
             triple="$(echo "$triple" | xargs)"
-            if [[ "$BLACKLIST" == *",${triple},"* ]]; then continue; fi
             if [[ "$triple" =~ $REGEX ]]; then filtered="${filtered}${triple};"; fi
           done <<< "$TARGETS"
           {
             echo -n "filtered_targets="
             echo -n "${filtered%\;}" | jq -Rsc 'split(";")'
+          } >> "$GITHUB_OUTPUT"
+      - name: 'Generate targets blacklist'
+        id: blacklist
+        env:
+          BLACKLIST: '${{ inputs.skip-target }}'
+        run: |
+          {
+            echo -n "blacklist_targets="
+            echo -n "$BLACKLIST" | jq -Rsc 'split(",") | [.[] | { target: . }]'
           } >> "$GITHUB_OUTPUT"
 
   generate-releasenotes:
@@ -193,6 +200,7 @@ jobs:
       fail-fast: false
       matrix:
         target: '${{ fromJSON(needs.calculate-matrix.outputs.targets) }}'
+        exclude: '${{ fromJSON(needs.calculate-matrix.outputs.blacklist) }}'
     steps:
       - uses: actions/checkout@v4
       - name: 'Install rust toolchain'
