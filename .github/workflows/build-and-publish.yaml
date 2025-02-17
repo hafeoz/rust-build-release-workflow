@@ -9,10 +9,10 @@ on:
         type: string
         default: '^([^-]+)-([^-]+)-([^-]+)(-([^-]+))?$'
       skip-target:
-        description: 'Targets that should not build against, as array of strings.
+        description: 'Targets that should not build against, as comma-separated list of strings.
                       By default all tier 1 and 2 rust targets will be built.'
         type: string
-        default: '[]'
+        default: ''
       executable-filter:
         description: 'jq filter that extract executable path from cargo json messages.'
         type: string
@@ -35,7 +35,7 @@ on:
         type: boolean
         default: true
       reprotest-variations:
-        description: 'Variations to test for reproducibility, as comma-separated of strings.
+        description: 'Variations to test for reproducibility, as comma-separated list of strings.
                       By default all variations except time (cause rustc to SIGSEGV) is enabled.'
         type: string
         default: '+all,-time,user_group.available+=repro1:repro1,domain_host.use_sudo=1'
@@ -110,10 +110,11 @@ jobs:
         # BUG: https://github.com/cross-rs/cross/issues/1599
         # x86_64-pc-solaris                 # 64-bit x86 Solaris 11.4
     outputs:
-      targets: '${{ steps.calculate.outputs.filtered_targets }}'
+      targets: '${{ steps.filter.outputs.filtered_targets }}'
+      blacklist: '${{ steps.blacklist.outputs.blacklist_targets }}'
     steps:
       - name: 'Filter targets'
-        id: calculate
+        id: filter
         env:
           REGEX: '${{ inputs.target-regex }}'
         run: |
@@ -129,6 +130,15 @@ jobs:
             echo -n "filtered_targets="
             echo -n "${filtered%\;}" | jq -Rsc 'split(";")'
           } >> "$GITHUB_OUTPUT"
+    - name: 'Generate targets blacklist'
+      id: blacklist
+      env:
+        BLACKLIST: '${{ inputs.skip-target }}'
+      run: |
+        {
+          echo -n "blacklist_targets="
+          echo -n "$BLACKLIST" | jq -Rsc 'split(",") | [.[] | { target: . }]'
+        } >> "$GITHUB_OUTPUT"
 
   generate-releasenotes:
     name: 'Generate changelog'
@@ -190,7 +200,7 @@ jobs:
       fail-fast: false
       matrix:
         target: '${{ fromJSON(needs.calculate-matrix.outputs.targets) }}'
-        exclude: '${{ fromJSON(inputs.skip-target) }}'
+        exclude: '${{ fromJSON(needs.calculate-matrix.outputs.blacklist) }}'
     steps:
       - uses: actions/checkout@v4
       - name: 'Install rust toolchain'
