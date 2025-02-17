@@ -240,7 +240,7 @@ jobs:
         run: |
           cross build --release --locked "--target=$TARGET"
           cross build --release --locked "--target=$TARGET" --message-format=json | jq -sr "$EXECUTABLE_FILTER" | while IFS= read -r file; do
-            cp -v "$file" "${EXECUTABLE_DIR}/"
+            cp -v -- "$file" "${EXECUTABLE_DIR}/"
           done
       - name: 'Build for target ${{ matrix.target }} and test for reproducibility'
         if: '${{ inputs.test-reproducibility }}'
@@ -289,7 +289,7 @@ jobs:
               cargo build --release --frozen "--target=$target" --message-format=json \
               | jq -sr "$executable_filter" \
               | while IFS= read -r file; do
-                cp "$file" "${output_dir}/"
+                cp -- "$file" "${output_dir}/"
               done
           REPROTEST_RUNNER: |
             #!/usr/bin/env bash
