@@ -268,6 +268,7 @@ jobs:
             output_dir="$(cat "${ENV_DIR}/output_dir" | base64 -d)"
             executable_filter="$(cat "${ENV_DIR}/executable_filter" | base64 -d)"
             vary_time="$(cat "${ENV_DIR}/vary_time" | base64 -d)"
+            export CARGO_HOME="$(cat "${ENV_DIR}/cargo_home" | base64 -d)"
             export PATH="$(cat "${ENV_DIR}/path" | base64 -d)"
             tmp_output_dir="$(mktemp -d)"
 
@@ -294,7 +295,9 @@ jobs:
             env_dir="$1"
 
             output_dir="$(mktemp -dp .)"
+            cargo_home="$(mktemp -dp .)"
             echo "$output_dir" | base64 > "${env_dir}/output_dir"
+            echo "$cargo_home" | base64 > "${env_dir}/cargo_home"
             echo "$PATH" | base64 > "${env_dir}/path"
             REPROTEST_VERBOSE="$(cat "${env_dir}/reprotest_verbose" | base64 -d)"
             REPROTEST_VARY="$(cat "${env_dir}/reprotest_vary" | base64 -d)"
@@ -308,8 +311,7 @@ jobs:
             sudo chmod -R ugo+rx /usr/local/
 
             # Fetch dependencies from network to allow time variation without network chaos
-            cargo fetch --locked "--target=$target"
-            sudo -g repro1 -u repro1 -- cargo fetch --locked "--target=$target"
+            CARGO_HOME="$cargo_home" cargo fetch --locked "--target=$target"
 
             before_time="$(date -Ins)"
             env "ENV_DIR=$env_dir" reprotest \
