@@ -377,7 +377,7 @@ jobs:
           DIR: '${{ steps.rename-artifact.outputs.EXECUTABLE_DIR }}'
         run: |
           find "$DIR" -type f -print0 | while IFS= read -r -d $'\0' file; do
-            checksum="$(sha512sum "$file" | cut -d -f1)"
+            checksum="$(sha512sum "$file" | cut -d" " -f1)"
             if [ "$REPRODUCIBLE" == 'true' ]; then
               echo "| $file | ✅ | $checksum |" >> "$GITHUB_OUTPUT"
             elif [ "$REPRODUCIBLE" == 'false' ]; then
