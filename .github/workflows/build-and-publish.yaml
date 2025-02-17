@@ -130,15 +130,15 @@ jobs:
             echo -n "filtered_targets="
             echo -n "${filtered%\;}" | jq -Rsc 'split(";")'
           } >> "$GITHUB_OUTPUT"
-    - name: 'Generate targets blacklist'
-      id: blacklist
-      env:
-        BLACKLIST: '${{ inputs.skip-target }}'
-      run: |
-        {
-          echo -n "blacklist_targets="
-          echo -n "$BLACKLIST" | jq -Rsc 'split(",") | [.[] | { target: . }]'
-        } >> "$GITHUB_OUTPUT"
+      - name: 'Generate targets blacklist'
+        id: blacklist
+        env:
+          BLACKLIST: '${{ inputs.skip-target }}'
+        run: |
+          {
+            echo -n "blacklist_targets="
+            echo -n "$BLACKLIST" | jq -Rsc 'split(",") | [.[] | { target: . }]'
+          } >> "$GITHUB_OUTPUT"
 
   generate-releasenotes:
     name: 'Generate changelog'
