@@ -323,9 +323,6 @@ jobs:
             sudo cp -a "${toolchain}/../." /usr/local/
             sudo chmod -R ugo+rx /usr/local/
 
-            # WORKAROUND: turn off FQDN to workaround https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1108550
-            echo "Defaults !fqdn" | sudo tee -a /etc/sudoers
-
             # Fetch dependencies from network to allow time variation without network chaos
             CARGO_HOME="$cargo_home" cargo fetch --locked "--target=$target"
 
