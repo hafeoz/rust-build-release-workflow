@@ -281,17 +281,27 @@ jobs:
               max_secs="$(( min_secs + 60 * 60 * 24 ))"
               secs="$(shuf -i "${min_secs}-${max_secs}" -n 1)"
               sudo date -Ins -s "$(date -Ins -d "$secs seconds")"
-              echo "Time travelled! Current time: $(date)"
+              echo "Time travelled to the future! Current time: $(date)"
             fi
 
-            env "CARGO_TARGET_DIR=$tmp_output_dir" \
-              cargo build --release --frozen "--target=$target"
-            env "CARGO_TARGET_DIR=$tmp_output_dir" \
-              cargo build --release --frozen "--target=$target" --message-format=json \
-              | jq -sr "$executable_filter" \
-              | while IFS= read -r file; do
-                cp -- "$file" "${output_dir}/"
-              done
+            build() {
+              env "CARGO_TARGET_DIR=$tmp_output_dir" \
+                cargo build --release --frozen "--target=$target"
+              env "CARGO_TARGET_DIR=$tmp_output_dir" \
+                cargo build --release --frozen "--target=$target" --message-format=json \
+                | jq -sr "$executable_filter" \
+                | while IFS= read -r file; do
+                  cp -- "$file" "${output_dir}/"
+                done
+            }
+            build && exitcode=$? || exitcode=$?
+
+            # Back to the present
+            if [ "$vary_time" == "true" ]; then
+              sudo date -Ins -s "$(date -Ins -d "$secs seconds ago")"
+              echo "Time travelled back! Current time: $(date)"
+            fi
+            exit $exitcode
           REPROTEST_RUNNER: |
             #!/usr/bin/env bash
             set -o errexit -o nounset -o pipefail
@@ -316,14 +326,12 @@ jobs:
             # Fetch dependencies from network to allow time variation without network chaos
             CARGO_HOME="$cargo_home" cargo fetch --locked "--target=$target"
 
-            before_time="$(date -Ins)"
             env "ENV_DIR=$env_dir" reprotest \
               "--store-dir=$EXECUTABLE_DIR" \
               "--verbosity=$REPROTEST_VERBOSE" \
               "--variations=$REPROTEST_VARY" \
               "bash $COMPILER_FILE" "${output_dir}/*" \
               && touch "${env_dir}/REPRODUCIBLE" || true
-            sudo date -Ins -s "$before_time" # This SHOULD be fine - a few minutes of skew is OK as long as we can pass SSL check
         run: |
           dockerfile="$(mktemp)"
           compiler_file="$(mktemp -p .)"
