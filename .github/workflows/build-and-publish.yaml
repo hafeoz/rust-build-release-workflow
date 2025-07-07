@@ -260,8 +260,8 @@ jobs:
           CROSS_DOCKERFILE: |
             ARG CROSS_BASE_IMAGE
             FROM $CROSS_BASE_IMAGE
-            RUN apt-get update >/dev/null 2>&1
-            RUN apt-get install --yes reprotest diffoscope jq sudo >/dev/null 2>&1
+            RUN apt-get update
+            RUN apt-get install --yes reprotest diffoscope jq sudo
             RUN useradd -mU repro1
             RUN echo 'ALL ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers
           COMPILER: |
